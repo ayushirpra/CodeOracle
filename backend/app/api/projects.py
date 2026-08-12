@@ -1,11 +1,12 @@
 import os
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 from app.jobs.manager import job_manager
 from app.ingestion.zip_handler import ZipHandler
 from app.ingestion.github_handler import GitHubHandler
 from app.ingestion.scanner import ProjectScanner
 from app.ingestion.exceptions import IngestionError
+from app.analyzers.registry import adapter_registry
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -19,7 +20,7 @@ async def upload_zip_project(file: UploadFile = File(...)):
     """
     Accepts ZIP file, validates structure and path traversal security,
     extracts to temporary job workspace, scans Python/JavaScript files,
-    and enforces 10,000 source-line limit.
+    runs language adapters, and enforces 10,000 source-line limit.
     """
     if not file.filename or not file.filename.lower().endswith(".zip"):
         raise HTTPException(
@@ -38,18 +39,21 @@ async def upload_zip_project(file: UploadFile = File(...)):
         scanner = ProjectScanner(job_dir)
         scan_results = scanner.scan()
 
+        # Run language adapters
+        project_analysis = adapter_registry.analyze_project(scan_results)
+
         job_manager.update_job(
             job_id,
             status="completed",
-            stage="ingestion",
-            stats=scan_results
+            stage="analysis",
+            stats=project_analysis.model_dump()
         )
 
         return {
             "job_id": job_id,
             "status": "completed",
-            "stage": "ingestion",
-            "stats": scan_results
+            "stage": "analysis",
+            "stats": project_analysis.model_dump()
         }
 
     except IngestionError as exc:
@@ -69,7 +73,7 @@ async def upload_zip_project(file: UploadFile = File(...)):
         )
     except Exception as exc:
         err_msg = f"Unexpected error during project upload: {str(exc)}"
-        job_manager.update_job(job_id, status="failed", stage="ingestion", error=err_msg)
+        job_manager.update_job(job_id, status="failed", stage="analysis", error=err_msg)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"message": err_msg, "job_id": job_id}
@@ -80,7 +84,7 @@ async def upload_zip_project(file: UploadFile = File(...)):
 async def ingest_github_project(payload: GitHubIngestRequest):
     """
     Accepts public GitHub repository URL, downloads repository safely,
-    scans Python/JavaScript files, and enforces 10,000 source-line limit.
+    scans Python/JavaScript files, runs language adapters, and enforces line limits.
     """
     if not payload.url or "github.com" not in payload.url:
         raise HTTPException(
@@ -99,18 +103,21 @@ async def ingest_github_project(payload: GitHubIngestRequest):
         scanner = ProjectScanner(job_dir)
         scan_results = scanner.scan()
 
+        # Run language adapters
+        project_analysis = adapter_registry.analyze_project(scan_results)
+
         job_manager.update_job(
             job_id,
             status="completed",
-            stage="ingestion",
-            stats=scan_results
+            stage="analysis",
+            stats=project_analysis.model_dump()
         )
 
         return {
             "job_id": job_id,
             "status": "completed",
-            "stage": "ingestion",
-            "stats": scan_results
+            "stage": "analysis",
+            "stats": project_analysis.model_dump()
         }
 
     except IngestionError as exc:
@@ -130,7 +137,7 @@ async def ingest_github_project(payload: GitHubIngestRequest):
         )
     except Exception as exc:
         err_msg = f"Unexpected error during GitHub repository ingestion: {str(exc)}"
-        job_manager.update_job(job_id, status="failed", stage="ingestion", error=err_msg)
+        job_manager.update_job(job_id, status="failed", stage="analysis", error=err_msg)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"message": err_msg, "job_id": job_id}

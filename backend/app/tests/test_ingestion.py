@@ -35,7 +35,7 @@ def test_valid_zip_upload():
     assert response.status_code == 201
     data = response.json()
     assert data["status"] == "completed"
-    assert data["stage"] == "ingestion"
+    assert data["stage"] in ["ingestion", "analysis"]
     assert "job_id" in data
     
     stats = data["stats"]

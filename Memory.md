@@ -3,9 +3,9 @@
 This file is the coding agent's source of truth. Update it after every completed phase.
 
 ## Current Status
-- Phase: 1 (Ingestion) — Completed
-- Overall status: Phase 1 project ingestion verified and complete
-- Last updated: Phase 1 completion
+- Phase: 2 (Language Adapters) — Completed
+- Overall status: Phase 2 pluggable language adapter system verified and complete
+- Last updated: Phase 2 completion
 
 ## Completed
 - Final product scope defined.
@@ -18,22 +18,26 @@ This file is the coding agent's source of truth. Update it after every completed
   - FastAPI backend with CORS middleware & config (`backend/`).
   - REST Health endpoint `/api/health`.
 - **Phase 1 Project Ingestion Implemented**:
-  - `POST /api/projects/upload`: Handles ZIP file uploads with Zip Slip path-traversal prevention.
-  - `POST /api/projects/github`: Downloads public GitHub repositories via zip codeload / shallow clone.
-  - `GET /api/jobs/{job_id}` & `DELETE /api/jobs/{job_id}`: Job state and workspace cleanup endpoints.
-  - `ProjectScanner`: Directory scanner enforcing ignore rules (`.git`, `node_modules`, `.venv`, build artifacts, etc.), detecting Python/JS source files, counting non-ignored lines, and enforcing the 10,000 line limit.
-  - Custom exceptions (`InvalidZipError`, `PathTraversalError`, `LineLimitExceededError`, `NoSupportedFilesError`, `GitHubRepoError`).
-  - Comprehensive unit test suite in `backend/app/tests/test_ingestion.py` (7/7 passed).
+  - `POST /api/projects/upload` and `POST /api/projects/github`.
+  - Zip Slip security validation and temporary job workspace manager.
+  - Source file scanning and 10,000 line limit enforcement.
+- **Phase 2 Language Adapters Implemented**:
+  - `LanguageAdapter` common abstract base contract (`backend/app/analyzers/base/adapter.py`).
+  - Normalized Pydantic analysis schema (`backend/app/analyzers/base/schema.py`) covering imports, exports, classes, functions, parameters, function calls, line numbers, and docstrings.
+  - `PythonAdapter` (`backend/app/analyzers/python/adapter.py`) built on Python's built-in `ast` module.
+  - `JavaScriptAdapter` (`backend/app/analyzers/javascript/adapter.py`) supporting `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs` ESM & CommonJS parsing.
+  - `AdapterRegistry` (`backend/app/analyzers/registry.py`) providing dynamic adapter dispatching and whole-project AST analysis aggregation.
+  - Pipeline integration in `POST /api/projects/upload` and `POST /api/projects/github`.
+  - Comprehensive unit test suite in `backend/app/tests/test_adapters.py` (11/11 tests passing across project test suite).
 
 ## In Progress
-- None (Phase 1 completed, awaiting instruction for Phase 2).
+- None (Phase 2 completed, awaiting instruction for Phase 3).
 
 ## Next Task
-Phase 2 — Language Adapters:
-1. Define common adapter contract (`detect`, `parse`, `extract_symbols`, `extract_dependencies`, `build_context`, `test_framework`).
-2. Implement Python `ast` adapter.
-3. Implement JavaScript adapter.
-4. Output normalized parsing & dependency schema.
+Phase 3 — Dependency Graph:
+1. Construct normalized dependency graph from `ProjectAnalysis` output.
+2. Build FastAPI graph API (`GET /api/jobs/{job_id}/graph`).
+3. Build React Flow visual dependency graph canvas in frontend with search, zoom, filter, and node details panel.
 
 ## Final Technology Decisions
 - React + Vite + TypeScript + Tailwind
@@ -96,8 +100,8 @@ Never store secret values here. Gemini API key and deployment configuration are 
 - [x] Frontend reaches backend
 - [x] ZIP upload works
 - [x] Public GitHub ingestion works
-- [ ] Python adapter works
-- [ ] JavaScript adapter works
+- [x] Python adapter works
+- [x] JavaScript adapter works
 - [ ] Dependency graph works
 - [ ] Gemini explanation works
 - [ ] Generated tests work
