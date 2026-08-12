@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   fetchHealth, HealthResponse,
   uploadZip, ingestGitHub,
-  fetchJobGraph,
-  JobResponse, GraphData,
+  fetchJobGraph, fetchJobExplanation,
+  JobResponse, GraphData, ProjectExplanation,
 } from './services/api';
 import DependencyGraph from './components/DependencyGraph';
+import ExplanationView from './components/ExplanationView';
 import {
   Activity, CheckCircle2, RefreshCw,
-  Cpu, Layers, FileCode, GitBranch, Upload, Link, Network,
-  X, AlertTriangle, ChevronRight,
+  Cpu, Layers, GitBranch, Upload, Link, Network,
+  X, AlertTriangle, ChevronRight, Sparkles,
 } from 'lucide-react';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -164,17 +165,25 @@ function ProcessingView({ source }: { source: string }) {
 function ResultsView({
   job,
   graphData,
+  explanation,
+  explanationLoading,
+  explanationError,
+  onLoadExplanation,
   onReset,
 }: {
   job: JobResponse;
   graphData: GraphData | null;
+  explanation: ProjectExplanation | null;
+  explanationLoading: boolean;
+  explanationError: string | null;
+  onLoadExplanation: () => void;
   onReset: () => void;
 }) {
   const stats = job.stats;
   const [activeTab, setActiveTab] = useState<'graph' | 'explanation' | 'tests' | 'refactor'>('graph');
   const tabs = [
     { id: 'graph', label: 'Dependency Graph', icon: Network },
-    { id: 'explanation', label: 'Explanation', icon: FileCode },
+    { id: 'explanation', label: 'Explanation', icon: Sparkles },
     { id: 'tests', label: 'Generated Tests', icon: CheckCircle2 },
     { id: 'refactor', label: 'Refactored Code', icon: Activity },
   ] as const;
@@ -231,14 +240,24 @@ function ResultsView({
             </div>
           )
         )}
-        {activeTab !== 'graph' && (
+        {activeTab === 'explanation' && (
+          <ExplanationView
+            explanation={explanation}
+            loading={explanationLoading}
+            error={explanationError}
+            onLoad={onLoadExplanation}
+          />
+        )}
+        {activeTab === 'tests' && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
             <Layers className="h-8 w-8 opacity-40" />
-            <p className="text-sm">
-              {activeTab === 'explanation' && 'Explanation — coming in Phase 4'}
-              {activeTab === 'tests' && 'Test Generation — coming in Phase 5'}
-              {activeTab === 'refactor' && 'Refactoring — coming in Phase 7'}
-            </p>
+            <p className="text-sm">Test Generation — coming in Phase 5</p>
+          </div>
+        )}
+        {activeTab === 'refactor' && (
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
+            <Layers className="h-8 w-8 opacity-40" />
+            <p className="text-sm">Refactoring — coming in Phase 7</p>
           </div>
         )}
       </div>
@@ -254,6 +273,9 @@ export const App: React.FC = () => {
   const [processingSource, setProcessingSource] = useState('');
   const [currentJob, setCurrentJob] = useState<JobResponse | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
+  const [explanation, setExplanation] = useState<ProjectExplanation | null>(null);
+  const [explanationLoading, setExplanationLoading] = useState(false);
+  const [explanationError, setExplanationError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -292,10 +314,27 @@ export const App: React.FC = () => {
     }
   }
 
+  async function handleLoadExplanation() {
+    if (!currentJob) return;
+    setExplanationLoading(true);
+    setExplanationError(null);
+    try {
+      const data = await fetchJobExplanation(currentJob.job_id);
+      setExplanation(data);
+    } catch (err: any) {
+      setExplanationError(err.message || 'Failed to generate explanation');
+    } finally {
+      setExplanationLoading(false);
+    }
+  }
+
   function reset() {
     setView('landing');
     setCurrentJob(null);
     setGraphData(null);
+    setExplanation(null);
+    setExplanationLoading(false);
+    setExplanationError(null);
     setError(null);
   }
 
@@ -330,7 +369,15 @@ export const App: React.FC = () => {
       {view === 'landing' && <LandingView health={health} onUpload={handleUpload} onGitHub={handleGitHub} />}
       {view === 'processing' && <ProcessingView source={processingSource} />}
       {view === 'results' && currentJob && (
-        <ResultsView job={currentJob} graphData={graphData} onReset={reset} />
+        <ResultsView
+          job={currentJob}
+          graphData={graphData}
+          explanation={explanation}
+          explanationLoading={explanationLoading}
+          explanationError={explanationError}
+          onLoadExplanation={handleLoadExplanation}
+          onReset={reset}
+        />
       )}
 
       {/* Footer */}

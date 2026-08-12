@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.api.health import router as health_router
 from app.api.projects import router as projects_router
 from app.api.jobs import router as jobs_router
+from app.api.explain import router as explain_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -29,6 +30,7 @@ app.add_middleware(
 app.include_router(health_router, prefix=settings.API_V1_STR)
 app.include_router(projects_router, prefix=settings.API_V1_STR)
 app.include_router(jobs_router, prefix=settings.API_V1_STR)
+app.include_router(explain_router, prefix=settings.API_V1_STR)
 
 # Root fallbacks
 app.include_router(health_router, prefix="")

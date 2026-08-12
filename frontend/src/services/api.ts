@@ -66,6 +66,50 @@ export interface GraphData {
   dependencies_map: Record<string, string[]>;
 }
 
+// ─── Explanation Types ────────────────────────────────────────────────────────
+
+export interface SymbolExplanation {
+  name: string;
+  symbol_type: 'function' | 'class' | 'method';
+  file_path: string;
+  start_line: number;
+  end_line: number;
+  summary: string;
+  inputs?: string;
+  outputs?: string;
+  side_effects?: string;
+  edge_cases?: string;
+  dependencies: string[];
+  uncertainty?: string;
+}
+
+export interface FileExplanation {
+  path: string;
+  language: string;
+  total_lines: number;
+  summary: string;
+  purpose?: string;
+  key_exports: string[];
+  dependencies: string[];
+  symbols: SymbolExplanation[];
+  uncertainty?: string;
+  error?: string;
+}
+
+export interface ProjectExplanation {
+  overview: string;
+  languages: string[];
+  total_files: number;
+  total_lines: number;
+  architecture_summary?: string;
+  entry_points: string[];
+  files: FileExplanation[];
+  partial: boolean;
+  error?: string;
+}
+
+// ─── API Client ───────────────────────────────────────────────────────────────
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -75,7 +119,8 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (!response.ok) {
     const detail = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(detail?.detail?.message || detail?.detail || `Request failed: ${response.status}`);
+    const msg = detail?.detail?.message || detail?.detail || `Request failed: ${response.status}`;
+    throw new Error(msg);
   }
   return response.json();
 }
@@ -113,6 +158,10 @@ export async function ingestGitHub(url: string): Promise<JobResponse> {
 
 export async function fetchJobGraph(jobId: string): Promise<GraphData> {
   return apiFetch<GraphData>(`/api/jobs/${jobId}/graph`);
+}
+
+export async function fetchJobExplanation(jobId: string): Promise<ProjectExplanation> {
+  return apiFetch<ProjectExplanation>(`/api/jobs/${jobId}/explain`);
 }
 
 export async function deleteJob(jobId: string): Promise<void> {
