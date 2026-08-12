@@ -7,6 +7,8 @@ load_dotenv()
 
 from app.core.config import settings
 from app.api.health import router as health_router
+from app.api.projects import router as projects_router
+from app.api.jobs import router as jobs_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -23,8 +25,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include health check route under /api and root fallback
+# Include routes under /api
 app.include_router(health_router, prefix=settings.API_V1_STR)
+app.include_router(projects_router, prefix=settings.API_V1_STR)
+app.include_router(jobs_router, prefix=settings.API_V1_STR)
+
+# Root fallbacks
 app.include_router(health_router, prefix="")
 
 

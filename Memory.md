@@ -3,9 +3,9 @@
 This file is the coding agent's source of truth. Update it after every completed phase.
 
 ## Current Status
-- Phase: 0 (Foundation) — Completed
-- Overall status: Phase 0 verified and complete
-- Last updated: Phase 0 foundation setup
+- Phase: 1 (Ingestion) — Completed
+- Overall status: Phase 1 project ingestion verified and complete
+- Last updated: Phase 1 completion
 
 ## Completed
 - Final product scope defined.
@@ -16,22 +16,24 @@ This file is the coding agent's source of truth. Update it after every completed
 - **Phase 0 Foundation Implemented**:
   - React + Vite + TypeScript + Tailwind CSS frontend (`frontend/`).
   - FastAPI backend with CORS middleware & config (`backend/`).
-  - REST Health endpoint `/api/health` returning system status, phase, and timestamp.
-  - API service layer in frontend (`src/services/api.ts`) connecting to backend health endpoint.
-  - Futuristic dark UI matching `Design.md` specification.
-  - Render blueprint (`render.yaml`) and Docker container configuration (`Dockerfile`).
-  - Monorepo layout with module package initializers for future phases.
+  - REST Health endpoint `/api/health`.
+- **Phase 1 Project Ingestion Implemented**:
+  - `POST /api/projects/upload`: Handles ZIP file uploads with Zip Slip path-traversal prevention.
+  - `POST /api/projects/github`: Downloads public GitHub repositories via zip codeload / shallow clone.
+  - `GET /api/jobs/{job_id}` & `DELETE /api/jobs/{job_id}`: Job state and workspace cleanup endpoints.
+  - `ProjectScanner`: Directory scanner enforcing ignore rules (`.git`, `node_modules`, `.venv`, build artifacts, etc.), detecting Python/JS source files, counting non-ignored lines, and enforcing the 10,000 line limit.
+  - Custom exceptions (`InvalidZipError`, `PathTraversalError`, `LineLimitExceededError`, `NoSupportedFilesError`, `GitHubRepoError`).
+  - Comprehensive unit test suite in `backend/app/tests/test_ingestion.py` (7/7 passed).
 
 ## In Progress
-- None (Phase 0 completed, awaiting instruction for Phase 1).
+- None (Phase 1 completed, awaiting instruction for Phase 2).
 
 ## Next Task
-Phase 1 — Ingestion:
-1. ZIP upload handling & path traversal safety validation.
-2. Public GitHub URL downloader.
-3. Ignore rules (`.git`, `node_modules`, `.venv`, build artifacts).
-4. Language detection & 10,000-line source validation.
-5. Temporary job creation & storage management.
+Phase 2 — Language Adapters:
+1. Define common adapter contract (`detect`, `parse`, `extract_symbols`, `extract_dependencies`, `build_context`, `test_framework`).
+2. Implement Python `ast` adapter.
+3. Implement JavaScript adapter.
+4. Output normalized parsing & dependency schema.
 
 ## Final Technology Decisions
 - React + Vite + TypeScript + Tailwind
@@ -92,8 +94,8 @@ Never store secret values here. Gemini API key and deployment configuration are 
 - [x] Frontend runs
 - [x] Backend runs
 - [x] Frontend reaches backend
-- [ ] ZIP upload works
-- [ ] Public GitHub ingestion works
+- [x] ZIP upload works
+- [x] Public GitHub ingestion works
 - [ ] Python adapter works
 - [ ] JavaScript adapter works
 - [ ] Dependency graph works
