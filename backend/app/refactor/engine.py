@@ -186,21 +186,23 @@ class RefactorEngine:
 
         refactored_files: List[RefactoredFile] = []
 
-        for fa in candidate_files:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _worker(fa: FileAnalysis) -> Optional[RefactoredFile]:
             original_code = _read_source_file(job_dir, fa.path)
             if original_code is None:
-                continue
-
+                return None
             try:
-                rf = _refactor_single_file(fa, original_code, self._provider)
-                refactored_files.append(rf)
-            except AIProviderError:
-                raise
+                return _refactor_single_file(fa, original_code, self._provider)
             except Exception:
-                # Skip file silently on unexpected errors; don't abort the whole project
-                pass
+                return None
 
-            time.sleep(INTER_FILE_DELAY_SECS)
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            results = list(executor.map(_worker, candidate_files))
+
+        for rf in results:
+            if rf is not None:
+                refactored_files.append(rf)
 
         # Aggregate counts
         total_warnings = sum(len(rf.breaking_changes) for rf in refactored_files)

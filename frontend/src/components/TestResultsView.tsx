@@ -88,6 +88,7 @@ export const TestResultsView: React.FC<TestResultsViewProps> = ({ jobId }) => {
   if (!data) return null;
 
   const execution = data.execution;
+  const dockerOffline = !!execution?.error?.includes('unavailable');
   const covPercent = execution?.coverage?.coverage_percent ?? 0;
   const isHighCoverage = covPercent >= 60;
   const selectedFile: GeneratedTestFile | undefined = data.generated_files[selectedFileIndex];
@@ -100,7 +101,19 @@ export const TestResultsView: React.FC<TestResultsViewProps> = ({ jobId }) => {
 
   return (
     <div className="space-y-6">
-      {/* ─── Top Metrics Bar ────────────────────────────────────────── */}
+      {/* ─── Docker Unavailable Banner ──────────────────────────────── */}
+      {dockerOffline && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-amber-950/25 border border-amber-700/40 rounded-xl">
+          <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="text-sm font-semibold text-amber-300">Docker Sandbox Unavailable</p>
+            <p className="text-xs text-amber-400/80">
+              Tests could not be executed. Generated test files are shown below and can be copied or downloaded.
+              No user code was executed on the host.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Line Coverage Card */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-4">

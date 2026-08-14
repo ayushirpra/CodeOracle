@@ -3,9 +3,9 @@
 This file is the coding agent's source of truth. Update it after every completed phase.
 
 ## Current Status
-- Phase: 8 (Deployment & Production Generated Tests Verification) — Completed
-- Overall status: Generated Tests flow verified; Docker fail-closed security enforced; 85 backend tests passing. Frontend build clean.
-- Last updated: Phase 8 production generated tests verification
+- Phase: 9 (UX & Performance Redesign) — Completed + 10k Validation PASS
+- Overall status: Parallelized Gemini API calls (ThreadPoolExecutor); AST-only symbol breakdown (no per-symbol AI calls); ExplanationView auto-loads with executive summary; progressive ProcessingView; Docker Unavailable banner in TestResultsView. 97 backend tests passing (90 original + 7 new 10k validation). Frontend tsc clean, Vite build clean. Global Gemini semaphore added (caps at 3 in-flight calls across all engines). AST analysis parallelized (max_workers=4).
+- Last updated: Phase 9 10k-line validation complete
 
 ## Completed
 - Final product scope defined.
@@ -77,7 +77,7 @@ Never store secret values here. `GEMINI_API_KEY` is read from server environment
 - [x] >60% benchmark coverage achieved
 - [x] Refactoring works (Phase 7)
 - [x] Breaking-change warnings work (Phase 7)
-- [ ] 10k-line project handled
+- [x] 10k-line project handled
 - [ ] Render deployment works
 
 ## Agent Update Rule

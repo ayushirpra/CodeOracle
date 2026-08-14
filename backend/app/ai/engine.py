@@ -57,12 +57,20 @@ class ExplanationEngine:
             )
 
         # --- 2. Per-file explanations ---
+        # Cap candidate files to top 10 for performance and token boundaries
+        candidate_files = project.files[:10]
         file_explanations: List[FileExplanation] = []
         had_error = False
 
-        for fa in project.files:
-            time.sleep(INTER_FILE_DELAY_SECS)
-            fe = self._explain_file(fa, graph)
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _worker(fa: FileAnalysis) -> FileExplanation:
+            return self._explain_file(fa, graph)
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            results = list(executor.map(_worker, candidate_files))
+
+        for fe in results:
             if fe.error:
                 had_error = True
             file_explanations.append(fe)
@@ -103,36 +111,31 @@ class ExplanationEngine:
         key_exports = [ex.name for ex in fa.exports[:10]]
         deps = [imp.module for imp in fa.imports[:10]]
 
-        # Per-symbol explanations (functions and classes)
+        # Construct symbol explanations directly from AST Analysis metadata
         symbols: List[SymbolExplanation] = []
-        all_symbols: list = list(fa.classes) + list(fa.functions)
+        for cls in fa.classes[:10]:
+            methods_str = ", ".join(m.name for m in cls.methods[:5])
+            symbols.append(SymbolExplanation(
+                name=cls.name,
+                symbol_type="class",
+                file_path=fa.path,
+                start_line=cls.start_line,
+                end_line=cls.end_line,
+                summary=cls.docstring or f"Class {cls.name} defining methods: {methods_str or 'None'}.",
+                dependencies=cls.base_classes[:5],
+            ))
 
-        for sym in all_symbols[:10]:  # cap at 10 symbols per file
-            time.sleep(INTER_FILE_DELAY_SECS)
-            sym_type = "class" if hasattr(sym, "base_classes") else "function"
-            sym_ctx = self._ctx.build_symbol_context(fa, sym.name)
-            sym_prompt = symbol_explanation_prompt(sym_ctx, sym_type)
-            try:
-                sym_text = self._provider.generate(sym_prompt)
-                symbols.append(SymbolExplanation(
-                    name=sym.name,
-                    symbol_type=sym_type,
-                    file_path=fa.path,
-                    start_line=sym.start_line,
-                    end_line=sym.end_line,
-                    summary=sym_text,
-                    dependencies=list({c.callee for c in getattr(sym, "calls", [])})[:10],
-                ))
-            except AIProviderError as exc:
-                symbols.append(SymbolExplanation(
-                    name=sym.name,
-                    symbol_type=sym_type,
-                    file_path=fa.path,
-                    start_line=sym.start_line,
-                    end_line=sym.end_line,
-                    summary="",
-                    uncertainty=f"Symbol explanation failed: {exc.message}",
-                ))
+        for fn in fa.functions[:10]:
+            params_str = ", ".join(p.name for p in fn.parameters[:5])
+            symbols.append(SymbolExplanation(
+                name=fn.name,
+                symbol_type="function",
+                file_path=fa.path,
+                start_line=fn.start_line,
+                end_line=fn.end_line,
+                summary=fn.docstring or f"Function {fn.name}({params_str}) -> {fn.return_type or 'Any'}.",
+                dependencies=list({c.callee for c in getattr(fn, "calls", [])})[:5],
+            ))
 
         return FileExplanation(
             path=fa.path,

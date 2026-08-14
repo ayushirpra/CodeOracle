@@ -12,7 +12,7 @@ import { RefactorView } from './components/RefactorView';
 import {
   Activity, CheckCircle2, RefreshCw,
   Cpu, GitBranch, Upload, Link, Network,
-  X, AlertTriangle, ChevronRight, Sparkles,
+  X, AlertTriangle, Sparkles,
 } from 'lucide-react';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -137,24 +137,48 @@ function LandingView({
 // ─── Processing View ──────────────────────────────────────────────────────────
 
 function ProcessingView({ source }: { source: string }) {
-  const stages = ['Ingest', 'Analyse', 'Explain', 'Test', 'Refactor'];
+  const [stageIdx, setStageIdx] = useState(0);
+  const stages = [
+    { label: 'Unpacking archive', sub: 'Scanning files & filtering boilerplate' },
+    { label: 'Building AST', sub: 'Parsing functions, classes & imports' },
+    { label: 'Mapping dependencies', sub: 'Constructing dependency graph' },
+    { label: 'Ready', sub: 'Loading results…' },
+  ];
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setStageIdx(i => Math.min(i + 1, stages.length - 1));
+    }, 2800);
+    return () => clearInterval(id);
+  }, []);
+
+  const current = stages[stageIdx];
+
   return (
     <main className="flex-1 flex flex-col items-center justify-center gap-8 px-6">
       <div className="text-center space-y-2">
         <div className="h-12 w-12 mx-auto rounded-full bg-cyan-950/40 border border-cyan-800/50 flex items-center justify-center">
           <RefreshCw className="h-6 w-6 text-cyan-400 animate-spin" />
         </div>
-        <h2 className="text-xl font-semibold text-white">Analysing project…</h2>
+        <h2 className="text-xl font-semibold text-white">{current.label}</h2>
         <p className="text-sm text-slate-400 font-mono truncate max-w-md">{source}</p>
+        <p className="text-xs text-slate-500">{current.sub}</p>
       </div>
+      {/* Stage progress dots */}
       <div className="flex items-center gap-2">
         {stages.map((s, i) => (
-          <React.Fragment key={s}>
+          <React.Fragment key={s.label}>
             <div className="flex flex-col items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" style={{ animationDelay: `${i * 200}ms` }} />
-              <span className="text-[10px] text-slate-400 font-mono">{s}</span>
+              <div
+                className={`h-2.5 w-2.5 rounded-full transition-all duration-500 ${
+                  i <= stageIdx ? 'bg-cyan-400' : 'bg-slate-700'
+                }`}
+              />
+              <span className="text-[10px] text-slate-400 font-mono">{s.label.split(' ')[0]}</span>
             </div>
-            {i < stages.length - 1 && <ChevronRight className="h-3 w-3 text-slate-600 mb-3" />}
+            {i < stages.length - 1 && (
+              <div className={`h-px w-8 mb-3 transition-all duration-500 ${i < stageIdx ? 'bg-cyan-500' : 'bg-slate-700'}`} />
+            )}
           </React.Fragment>
         ))}
       </div>

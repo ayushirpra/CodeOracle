@@ -128,24 +128,27 @@ class TestGenerator:
 
     def generate_tests_for_project(self, project: ProjectAnalysis) -> JobTestResults:
         """
-        Generates test files for all non-test source files in a project.
+        Generates test files for non-test source files in a project (capped at 5 files for scalability).
         Returns JobTestResults containing GeneratedTestFile items.
         """
-        generated_files: List[GeneratedTestFile] = []
-        errors: List[str] = []
-
+        candidate_files: List[FileAnalysis] = []
         for fa in project.files:
-            # Skip existing test files
             norm_path = fa.path.replace("\\", "/").lower()
             if "test_" in norm_path or "_test" in norm_path or "/tests/" in norm_path:
                 continue
-
-            # Skip empty files
             if not fa.functions and not fa.classes and fa.total_lines < 3:
                 continue
+            if fa.language.lower() in ("python", "javascript", "typescript"):
+                candidate_files.append(fa)
 
-            time.sleep(INTER_FILE_DELAY_SECS)
+        candidate_files = candidate_files[:5]
 
+        generated_files: List[GeneratedTestFile] = []
+        errors: List[str] = []
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _worker(fa: FileAnalysis) -> Optional[GeneratedTestFile]:
             if fa.language == "python":
                 prompt = build_python_test_prompt(fa)
                 test_filename = f"test_{os.path.basename(fa.path)}"
@@ -158,23 +161,31 @@ class TestGenerator:
                 test_dir = os.path.dirname(fa.path)
                 test_path = os.path.join(test_dir, test_filename) if test_dir else f"tests/{test_filename}"
             else:
-                continue
+                return None
 
             try:
                 raw_response = self._provider.generate(prompt)
                 code = extract_code_block(raw_response, default_lang=fa.language)
 
                 if code:
-                    generated_files.append(GeneratedTestFile(
+                    return GeneratedTestFile(
                         file_path=test_path.replace("\\", "/"),
                         target_file=fa.path,
                         code=code,
                         language=fa.language
-                    ))
+                    )
             except AIProviderError as exc:
                 errors.append(f"Failed to generate tests for {fa.path}: {exc.message}")
             except Exception as exc:
                 errors.append(f"Error generating tests for {fa.path}: {str(exc)}")
+            return None
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            results = list(executor.map(_worker, candidate_files))
+
+        for res in results:
+            if res:
+                generated_files.append(res)
 
         err_msg = "; ".join(errors) if errors else None
         return JobTestResults(

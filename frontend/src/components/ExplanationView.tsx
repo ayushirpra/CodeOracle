@@ -159,31 +159,24 @@ interface ExplanationViewProps {
 }
 
 export default function ExplanationView({ explanation, loading, error, onLoad }: ExplanationViewProps) {
-  // Not yet loaded
-  if (!explanation && !loading && !error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
-        <div className="text-center space-y-2">
-          <p className="text-slate-400 text-sm">Generate an AI-powered explanation of this codebase.</p>
-          <p className="text-slate-500 text-xs font-mono">Requires GEMINI_API_KEY to be configured on the server.</p>
-        </div>
-        <button
-          onClick={onLoad}
-          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400
-            text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-cyan-500/20"
-        >
-          Generate Explanation
-        </button>
-      </div>
-    );
-  }
+  // Auto-trigger on first render if nothing loaded yet
+  React.useEffect(() => {
+    if (!explanation && !loading && !error) {
+      onLoad();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
-        <div className="h-8 w-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
-        <p className="text-sm">Asking Gemini to explain your codebase…</p>
-        <p className="text-xs text-slate-500 font-mono">This may take a moment for larger projects.</p>
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-400">
+        <div className="relative">
+          <div className="h-12 w-12 rounded-full border-2 border-cyan-800 border-t-cyan-400 animate-spin" />
+        </div>
+        <div className="text-center space-y-1">
+          <p className="text-sm font-medium text-slate-200">Generating explanation…</p>
+          <p className="text-xs text-slate-500 font-mono">Gemini is reading your codebase in parallel</p>
+        </div>
       </div>
     );
   }
@@ -210,6 +203,11 @@ export default function ExplanationView({ explanation, loading, error, onLoad }:
 
   if (!explanation) return null;
 
+  // Extract top-level bullets from overview for executive summary
+  const overviewLines = explanation.overview.split('\n').filter(l => l.trim());
+  const bulletLines = overviewLines.filter(l => /^[-*•]|\d+\./.test(l.trim())).slice(0, 3);
+  const summaryBullets = bulletLines.length > 0 ? bulletLines : overviewLines.slice(0, 3);
+
   return (
     <div className="h-full overflow-y-auto px-5 py-4 space-y-5">
       {/* Partial warning */}
@@ -220,27 +218,47 @@ export default function ExplanationView({ explanation, loading, error, onLoad }:
         </div>
       )}
 
-      {/* Overview */}
-      <div className="bg-[#151C2C] border border-[#1E293B] rounded-xl p-4 space-y-2">
-        <div className="flex items-center gap-2 mb-3">
+      {/* Executive Summary Banner */}
+      <div className="bg-gradient-to-br from-[#0f1928] to-[#151C2C] border border-cyan-800/30 rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
           <CheckCircle2 size={15} className="text-cyan-400" />
-          <span className="text-sm font-semibold text-white">Repository Overview</span>
+          <span className="text-sm font-semibold text-white">Architecture Overview</span>
+          <span className="ml-auto text-[10px] font-mono text-slate-500">
+            {explanation.total_files} files · {explanation.total_lines.toLocaleString()} lines · {explanation.languages.join(', ')}
+          </span>
         </div>
-        <GeminiText text={explanation.overview} />
+
+        {/* Key points */}
+        <ul className="space-y-1.5">
+          {summaryBullets.map((line, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs text-slate-300">
+              <span className="text-cyan-500 mt-0.5 flex-shrink-0">▸</span>
+              <span>{line.replace(/^[-*•]\s*|\d+\.\s*/, '').trim()}</span>
+            </li>
+          ))}
+        </ul>
 
         {explanation.entry_points.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-[#1E293B]">
-            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-1.5">Entry Points</p>
-            <div className="flex flex-wrap gap-1.5">
-              {explanation.entry_points.map(ep => (
-                <span key={ep} className="text-[10px] font-mono text-cyan-400 bg-cyan-950/30 border border-cyan-800/40 rounded px-2 py-0.5">
-                  {ep}
-                </span>
-              ))}
-            </div>
+          <div className="pt-2 border-t border-[#1E293B] flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Entry Points:</span>
+            {explanation.entry_points.map(ep => (
+              <span key={ep} className="text-[10px] font-mono text-cyan-400 bg-cyan-950/30 border border-cyan-800/40 rounded px-2 py-0.5">
+                {ep}
+              </span>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Full Overview — collapsible */}
+      <details className="group">
+        <summary className="text-xs font-mono text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors select-none">
+          Full Gemini Overview ▸
+        </summary>
+        <div className="mt-3 bg-[#151C2C] border border-[#1E293B] rounded-xl p-4">
+          <GeminiText text={explanation.overview} />
+        </div>
+      </details>
 
       {/* Per-file explanations */}
       {explanation.files.length > 0 && (

@@ -29,34 +29,39 @@ class AdapterRegistry:
         """
         Analyzes all source files in a scanned project using registered language adapters.
         Returns normalized ProjectAnalysis object.
+
+        Files are parsed in parallel (up to 4 workers) since each file's AST parse
+        is independent and CPU-bound — this meaningfully reduces wall-clock time for
+        large (50+ file) projects without risking shared-state race conditions.
         """
         root_dir = scan_results.get("root_dir", "")
         scanned_files = scan_results.get("files", [])
-        
-        file_analyses: List[FileAnalysis] = []
+
         dependencies_summary: Dict[str, List[str]] = {}
 
-        for file_info in scanned_files:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _parse_file(file_info: Dict[str, Any]) -> FileAnalysis:
             full_path = file_info["full_path"]
             rel_path = file_info["path"]
-
             adapter = self.get_adapter(rel_path)
             if adapter:
-                analysis = adapter.parse_file(full_path, rel_path)
-                file_analyses.append(analysis)
+                return adapter.parse_file(full_path, rel_path)
+            return FileAnalysis(
+                path=rel_path,
+                language=file_info.get("language", "unknown"),
+                total_lines=file_info.get("lines", 0),
+                parse_error="No registered adapter available for file extension."
+            )
 
-                # Record imports in summary
-                imported_mods = [imp.module for imp in analysis.imports if imp.module]
-                if imported_mods:
-                    dependencies_summary[rel_path] = sorted(list(set(imported_mods)))
-            else:
-                # Unsupported language fallback
-                file_analyses.append(FileAnalysis(
-                    path=rel_path,
-                    language=file_info.get("language", "unknown"),
-                    total_lines=file_info.get("lines", 0),
-                    parse_error="No registered adapter available for file extension."
-                ))
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            file_analyses: List[FileAnalysis] = list(executor.map(_parse_file, scanned_files))
+
+        # Build dependency summary after parallel parse (sequential — fast dict ops)
+        for analysis in file_analyses:
+            imported_mods = [imp.module for imp in analysis.imports if imp.module]
+            if imported_mods:
+                dependencies_summary[analysis.path] = sorted(list(set(imported_mods)))
 
         return ProjectAnalysis(
             root_dir=root_dir,

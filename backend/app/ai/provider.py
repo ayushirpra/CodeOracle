@@ -8,8 +8,15 @@ Other provider classes can implement the same interface in the future.
 import os
 import time
 import json
+import threading
 from typing import Optional
 from app.core.config import settings
+
+# Global semaphore: no matter how many engines call concurrently (Explain +
+# TestGen + Refactor each have their own ThreadPoolExecutor(max_workers=3)),
+# we never allow more than 3 simultaneous Gemini HTTP calls from this process.
+# This prevents cascading 429 rate-limit errors on large projects.
+_GLOBAL_GEMINI_SEMAPHORE = threading.Semaphore(3)
 
 
 class AIProviderError(Exception):
@@ -103,53 +110,59 @@ class GeminiProvider:
         """
         client = self._get_client()
 
+        # Acquire the global concurrency slot before making any network call.
+        # Released unconditionally in the finally block below.
+        _GLOBAL_GEMINI_SEMAPHORE.acquire()
         attempt = 0
-        while attempt <= self.MAX_RETRIES:
-            try:
-                from google.genai import types as genai_types
-                response = client.models.generate_content(
-                    model=self.MODEL_NAME,
-                    contents=prompt,
-                    config=genai_types.GenerateContentConfig(
-                        temperature=temperature,
-                        max_output_tokens=8192,
+        try:
+            while attempt <= self.MAX_RETRIES:
+                try:
+                    from google.genai import types as genai_types
+                    response = client.models.generate_content(
+                        model=self.MODEL_NAME,
+                        contents=prompt,
+                        config=genai_types.GenerateContentConfig(
+                            temperature=temperature,
+                            max_output_tokens=8192,
+                        )
                     )
-                )
 
-                # Validate response
-                if not response or not response.text:
-                    raise AIResponseError("Empty text in Gemini response.")
+                    # Validate response
+                    if not response or not response.text:
+                        raise AIResponseError("Empty text in Gemini response.")
 
-                return response.text.strip()
+                    return response.text.strip()
 
-            except AIProviderError:
-                raise
-            except Exception as exc:
-                err_str = str(exc).lower()
+                except AIProviderError:
+                    raise
+                except Exception as exc:
+                    err_str = str(exc).lower()
 
-                if "429" in err_str or "quota" in err_str or "rate" in err_str:
-                    if attempt < self.MAX_RETRIES:
-                        time.sleep(2 ** attempt)
-                        attempt += 1
-                        continue
-                    raise AIQuotaError(str(exc))
+                    if "429" in err_str or "quota" in err_str or "rate" in err_str:
+                        if attempt < self.MAX_RETRIES:
+                            time.sleep(2 ** attempt)
+                            attempt += 1
+                            continue
+                        raise AIQuotaError(str(exc))
 
-                if "timeout" in err_str or "deadline" in err_str or "timed out" in err_str:
-                    raise AITimeoutError()
+                    if "timeout" in err_str or "deadline" in err_str or "timed out" in err_str:
+                        raise AITimeoutError()
 
-                if "invalid" in err_str and "key" in err_str:
-                    raise AIKeyMissingError()
+                    if "invalid" in err_str and "key" in err_str:
+                        raise AIKeyMissingError()
 
-                if "500" in err_str or "503" in err_str or "unavailable" in err_str:
-                    if attempt < self.MAX_RETRIES:
-                        time.sleep(1)
-                        attempt += 1
-                        continue
+                    if "500" in err_str or "503" in err_str or "unavailable" in err_str:
+                        if attempt < self.MAX_RETRIES:
+                            time.sleep(1)
+                            attempt += 1
+                            continue
+                        raise AIServiceError(str(exc))
+
                     raise AIServiceError(str(exc))
 
-                raise AIServiceError(str(exc))
-
-        raise AIServiceError("Max retries exhausted.")
+            raise AIServiceError("Max retries exhausted.")
+        finally:
+            _GLOBAL_GEMINI_SEMAPHORE.release()
 
 
 # Global singleton — the rest of the application uses this
