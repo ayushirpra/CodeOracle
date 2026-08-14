@@ -6,11 +6,19 @@ import {
   BreakingChangeWarning,
 } from '../services/api';
 import {
-  Layers, AlertTriangle, ChevronDown, ChevronRight,
-  FileCode, Sparkles, Copy, Check, ShieldAlert, ShieldCheck, Info,
+  Layers,
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  FileCode,
+  Sparkles,
+  Copy,
+  Check,
+  ShieldAlert,
+  ShieldCheck,
+  Info,
+  RefreshCw,
 } from 'lucide-react';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RefactorViewProps {
   jobId: string;
@@ -18,72 +26,76 @@ interface RefactorViewProps {
 
 type DiffMode = 'split' | 'unified';
 
-// ─── Severity Badges ──────────────────────────────────────────────────────────
-
+// ─── Severity Badge ──────────────────────────────────────────────────────────
 function SeverityBadge({ severity }: { severity: 'HIGH' | 'MEDIUM' | 'LOW' }) {
   const styles = {
-    HIGH: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
-    MEDIUM: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-    LOW: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+    HIGH: 'bg-rose-950/60 text-rose-300 border-rose-800/60',
+    MEDIUM: 'bg-amber-950/60 text-amber-300 border-amber-800/60',
+    LOW: 'bg-sky-950/60 text-sky-300 border-sky-800/60',
   };
   return (
-    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${styles[severity]} uppercase tracking-wide`}>
+    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${styles[severity]} uppercase tracking-wide font-mono`}>
       {severity}
     </span>
   );
 }
 
 // ─── Breaking Change Card ─────────────────────────────────────────────────────
-
 function BreakingChangeCard({ warning }: { warning: BreakingChangeWarning }) {
   const [expanded, setExpanded] = useState(false);
   const icons = {
-    HIGH: <ShieldAlert className="w-4 h-4 text-rose-400" />,
-    MEDIUM: <AlertTriangle className="w-4 h-4 text-amber-400" />,
-    LOW: <Info className="w-4 h-4 text-sky-400" />,
+    HIGH: <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />,
+    MEDIUM: <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />,
+    LOW: <Info className="w-4 h-4 text-sky-400 shrink-0" />,
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+    <div className="glass-card rounded-xl overflow-hidden border border-white/[0.08]">
       <button
-        onClick={() => setExpanded(v => !v)}
-        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-800/40 transition"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between p-3.5 hover:bg-white/[0.04] transition text-left gap-3"
       >
-        <div className="flex items-center space-x-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           {icons[warning.severity]}
           <SeverityBadge severity={warning.severity} />
-          <code className="text-xs text-cyan-300 font-mono truncate">{warning.symbol}</code>
+          <code className="text-xs text-cyan-300 font-mono font-semibold truncate">
+            {warning.symbol}
+          </code>
         </div>
-        {expanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
+        {expanded ? (
+          <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+        )}
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-2 border-t border-slate-800 pt-3">
-          <p className="text-xs text-slate-300">{warning.description}</p>
+        <div className="px-4 pb-4 pt-2 space-y-3 border-t border-white/[0.06] bg-black/40">
+          <p className="text-xs text-slate-300 leading-relaxed">{warning.description}</p>
           {(warning.original_signature || warning.proposed_signature) && (
-            <div className="space-y-1">
+            <div className="space-y-2 font-mono text-[11px]">
               {warning.original_signature && (
-                <div className="flex items-start space-x-2">
-                  <span className="text-[10px] text-slate-500 w-16 shrink-0 pt-0.5">Before:</span>
-                  <code className="text-[11px] text-rose-300 font-mono bg-rose-950/20 px-2 py-1 rounded block flex-1">
-                    {warning.original_signature}
-                  </code>
+                <div className="p-2.5 bg-rose-950/20 border border-rose-900/30 rounded-xl">
+                  <span className="text-[10px] text-rose-400 block uppercase font-bold mb-1">
+                    Previous Signature
+                  </span>
+                  <code className="text-rose-200">{warning.original_signature}</code>
                 </div>
               )}
               {warning.proposed_signature && (
-                <div className="flex items-start space-x-2">
-                  <span className="text-[10px] text-slate-500 w-16 shrink-0 pt-0.5">After:</span>
-                  <code className="text-[11px] text-emerald-300 font-mono bg-emerald-950/20 px-2 py-1 rounded block flex-1">
-                    {warning.proposed_signature}
-                  </code>
+                <div className="p-2.5 bg-emerald-950/20 border border-emerald-900/30 rounded-xl">
+                  <span className="text-[10px] text-emerald-400 block uppercase font-bold mb-1">
+                    Refactored Signature
+                  </span>
+                  <code className="text-emerald-200">{warning.proposed_signature}</code>
                 </div>
               )}
             </div>
           )}
           {warning.migration_hint && (
-            <div className="flex items-start space-x-2 p-2 bg-slate-800/60 rounded-lg">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-              <p className="text-[11px] text-indigo-300">{warning.migration_hint}</p>
+            <div className="flex items-start gap-2 p-3 bg-indigo-950/30 border border-indigo-800/40 rounded-xl">
+              <Sparkles className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-indigo-200 leading-relaxed">{warning.migration_hint}</p>
             </div>
           )}
         </div>
@@ -93,39 +105,39 @@ function BreakingChangeCard({ warning }: { warning: BreakingChangeWarning }) {
 }
 
 // ─── Diff Viewer ──────────────────────────────────────────────────────────────
-
 function DiffViewer({ file, mode }: { file: RefactoredFile; mode: DiffMode }) {
-  const [copiedOrig, setCopiedOrig] = useState(false);
-  const [copiedProp, setCopiedProp] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const copy = async (text: string, setter: React.Dispatch<React.SetStateAction<boolean>>) => {
+  const copyCode = async (text: string) => {
     await navigator.clipboard.writeText(text);
-    setter(true);
-    setTimeout(() => setter(false), 2000);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (mode === 'unified') {
     const lines = file.unified_diff.split('\n');
     return (
-      <div className="bg-[#0B0F19] rounded-lg overflow-hidden border border-slate-800 font-mono text-[11px] leading-relaxed">
-        <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-          <span className="text-slate-400 text-xs">Unified Diff — {file.file_path}</span>
+      <div className="bg-black/50 rounded-2xl overflow-hidden border border-white/[0.08] font-mono text-xs leading-relaxed flex flex-col min-h-0">
+        <div className="px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.08] flex items-center justify-between">
+          <span className="text-slate-300 text-xs font-medium">Unified Diff</span>
           <button
-            onClick={() => copy(file.unified_diff, setCopiedProp)}
-            className="flex items-center space-x-1 text-slate-500 hover:text-slate-200 transition text-[10px]"
+            onClick={() => copyCode(file.proposed_code)}
+            className="flex items-center gap-1.5 px-3 py-1 glass-card hover:bg-white/[0.08] text-slate-200 rounded-lg text-xs transition border border-white/[0.08]"
           >
-            {copiedProp ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-            <span>{copiedProp ? 'Copied' : 'Copy diff'}</span>
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copied ? 'Copied' : 'Copy Proposed'}</span>
           </button>
         </div>
-        <div className="overflow-auto max-h-96 p-2">
+        <div className="overflow-auto p-4 flex-1">
           {lines.map((line, idx) => {
             let cls = 'text-slate-400';
-            if (line.startsWith('+') && !line.startsWith('+++')) cls = 'text-emerald-400 bg-emerald-950/20';
-            if (line.startsWith('-') && !line.startsWith('---')) cls = 'text-rose-400 bg-rose-950/20';
-            if (line.startsWith('@@')) cls = 'text-cyan-400 bg-cyan-950/10';
+            if (line.startsWith('+') && !line.startsWith('+++'))
+              cls = 'text-emerald-300 bg-emerald-950/30';
+            if (line.startsWith('-') && !line.startsWith('---'))
+              cls = 'text-rose-300 bg-rose-950/30';
+            if (line.startsWith('@@')) cls = 'text-cyan-300 bg-cyan-950/20';
             return (
-              <div key={idx} className={`px-3 py-0.5 rounded ${cls} whitespace-pre`}>
+              <div key={idx} className={`px-3 py-0.5 rounded font-mono ${cls} whitespace-pre`}>
                 {line || ' '}
               </div>
             );
@@ -137,40 +149,42 @@ function DiffViewer({ file, mode }: { file: RefactoredFile; mode: DiffMode }) {
 
   // Split mode
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
       {/* Original */}
-      <div className="bg-[#0B0F19] rounded-lg border border-slate-800 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 bg-rose-950/20 border-b border-rose-900/30">
-          <span className="text-[10px] font-semibold text-rose-400 uppercase tracking-widest">Original</span>
-          <button onClick={() => copy(file.original_code, setCopiedOrig)} className="text-slate-500 hover:text-slate-200 transition">
-            {copiedOrig ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-          </button>
+      <div className="bg-black/50 rounded-2xl border border-white/[0.08] overflow-hidden flex flex-col min-h-0">
+        <div className="px-4 py-2.5 bg-rose-950/30 border-b border-rose-900/40 flex items-center justify-between">
+          <span className="text-xs font-semibold text-rose-300 uppercase tracking-wider">
+            Original Code
+          </span>
         </div>
-        <pre className="p-4 text-[11px] font-mono text-slate-300 overflow-auto max-h-80 leading-relaxed">
-          {file.original_code}
+        <pre className="p-4 text-xs font-mono text-slate-300 overflow-auto flex-1 leading-relaxed">
+          <code>{file.original_code}</code>
         </pre>
       </div>
 
       {/* Proposed */}
-      <div className="bg-[#0B0F19] rounded-lg border border-slate-800 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 bg-emerald-950/20 border-b border-emerald-900/30">
-          <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-widest">Proposed</span>
-          <button onClick={() => copy(file.proposed_code, setCopiedProp)} className="text-slate-500 hover:text-slate-200 transition">
-            {copiedProp ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+      <div className="bg-black/50 rounded-2xl border border-white/[0.08] overflow-hidden flex flex-col min-h-0">
+        <div className="px-4 py-2.5 bg-emerald-950/30 border-b border-emerald-900/40 flex items-center justify-between">
+          <span className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">
+            Proposed Refactoring
+          </span>
+          <button
+            onClick={() => copyCode(file.proposed_code)}
+            className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 rounded-lg text-[11px] font-semibold transition"
+          >
+            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
-        <pre className="p-4 text-[11px] font-mono text-slate-300 overflow-auto max-h-80 leading-relaxed">
-          {file.proposed_code}
+        <pre className="p-4 text-xs font-mono text-emerald-200 overflow-auto flex-1 leading-relaxed">
+          <code>{file.proposed_code}</code>
         </pre>
       </div>
     </div>
   );
 }
 
-
 // ─── Main Component ───────────────────────────────────────────────────────────
-
-
 export const RefactorView: React.FC<RefactorViewProps> = ({ jobId }) => {
   const [data, setData] = useState<ProjectRefactorProposal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -178,24 +192,30 @@ export const RefactorView: React.FC<RefactorViewProps> = ({ jobId }) => {
   const [diffMode, setDiffMode] = useState<DiffMode>('split');
   const [selectedFileIdx, setSelectedFileIdx] = useState(0);
 
-  useEffect(() => {
+  const loadRefactor = () => {
     setLoading(true);
+    setError(null);
     fetchJobRefactor(jobId)
       .then(setData)
       .catch((err: any) => setError(err?.message || 'Failed to generate refactoring proposals.'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadRefactor();
   }, [jobId]);
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-400">
-        <div className="relative">
-          <div className="w-16 h-16 rounded-full border-2 border-indigo-500/20 border-t-indigo-400 animate-spin" />
-          <Sparkles className="absolute inset-0 m-auto w-5 h-5 text-indigo-400" />
+      <div className="flex flex-col items-center justify-center h-full p-12 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl glass-panel border border-violet-500/30 flex items-center justify-center">
+          <Sparkles className="w-6 h-6 text-violet-400 animate-spin" />
         </div>
-        <div className="text-center space-y-1">
-          <p className="text-sm font-medium text-slate-300">Generating Refactoring Proposals</p>
-          <p className="text-xs text-slate-500">Analysing code and computing unified diffs…</p>
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-white">Drafting Modern Refactoring Proposals</h3>
+          <p className="text-xs text-slate-400 font-mono">
+            Gemini is modernizing idioms, adding types, and evaluating AST breaking changes...
+          </p>
         </div>
       </div>
     );
@@ -203,19 +223,30 @@ export const RefactorView: React.FC<RefactorViewProps> = ({ jobId }) => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
-        <AlertTriangle className="w-8 h-8 text-rose-400" />
-        <p className="text-sm text-rose-300 font-medium">Refactoring Failed</p>
-        <p className="text-xs text-slate-500 max-w-md text-center">{error}</p>
+      <div className="flex flex-col items-center justify-center h-full p-12 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400">
+          <AlertTriangle className="w-6 h-6" />
+        </div>
+        <div className="space-y-1 max-w-md">
+          <h3 className="text-sm font-semibold text-white">Refactoring Analysis Failed</h3>
+          <p className="text-xs text-slate-400 leading-relaxed font-mono">{error}</p>
+        </div>
+        <button
+          onClick={loadRefactor}
+          className="px-4 py-2 glass-card hover:bg-white/[0.08] text-slate-200 text-xs font-semibold rounded-xl transition-colors border border-white/[0.1] flex items-center gap-1.5"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Try Again</span>
+        </button>
       </div>
     );
   }
 
   if (!data || data.files.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
+      <div className="flex flex-col items-center justify-center h-full p-12 text-center space-y-2 text-slate-400">
         <Layers className="w-8 h-8 opacity-30" />
-        <p className="text-sm">No refactorable files found in this project.</p>
+        <p className="text-sm font-mono">No refactorable source files found in this project.</p>
       </div>
     );
   }
@@ -223,105 +254,116 @@ export const RefactorView: React.FC<RefactorViewProps> = ({ jobId }) => {
   const selectedFile = data.files[selectedFileIdx];
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* File sidebar */}
-      <aside className="w-60 shrink-0 border-r border-slate-800 bg-[#0D1424] flex flex-col">
-        <div className="px-4 py-3 border-b border-slate-800">
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Refactored Files</p>
+    <div className="h-full flex flex-col p-6 space-y-4 max-w-6xl mx-auto overflow-y-auto min-h-0">
+      {/* ─── Header Summary Row ───────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 glass-panel rounded-2xl p-4 sm:p-5 border border-white/[0.08] shrink-0">
+        <div>
+          <h3 className="text-sm font-bold text-white">
+            Code Modernization & Refactoring ({data.total_files_refactored} file{data.total_files_refactored !== 1 ? 's' : ''})
+          </h3>
+          <p className="text-xs text-slate-400 font-mono">
+            {data.total_warnings} total warnings detected ·{' '}
+            <span className="text-rose-400 font-semibold">{data.high_warnings} High</span> ·{' '}
+            <span className="text-amber-400 font-semibold">{data.medium_warnings} Medium</span> ·{' '}
+            <span className="text-sky-400 font-semibold">{data.low_warnings} Low</span>
+          </p>
         </div>
-        <div className="overflow-y-auto flex-1 py-1">
-          {data.files.map((f, idx) => (
+
+        {/* Diff Mode Toggle */}
+        <div className="flex items-center bg-black/40 rounded-xl p-0.5 border border-white/[0.06]">
+          {(['split', 'unified'] as const).map((m) => (
             <button
-              key={idx}
-              onClick={() => setSelectedFileIdx(idx)}
-              className={`w-full text-left px-4 py-2.5 transition flex items-start space-x-2 ${
-                idx === selectedFileIdx
-                  ? 'bg-indigo-600/20 border-l-2 border-indigo-400'
-                  : 'hover:bg-slate-800/40 border-l-2 border-transparent'
+              key={m}
+              onClick={() => setDiffMode(m)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition capitalize ${
+                diffMode === m
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <FileCode className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-xs font-mono text-slate-300 truncate">{f.file_path.split('/').pop()}</p>
-                {f.high_count > 0 && (
-                  <span className="text-[9px] text-rose-400 font-bold">{f.high_count} HIGH</span>
-                )}
-              </div>
+              {m} View
             </button>
           ))}
         </div>
-      </aside>
+      </div>
 
-      {/* Main panel */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Summary header */}
-        <div className="px-6 py-4 border-b border-slate-800 bg-[#0D1424] flex items-center justify-between shrink-0">
-          <div>
-            <h3 className="text-sm font-semibold text-white">
-              {data.total_files_refactored} file{data.total_files_refactored !== 1 ? 's' : ''} modernised
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              {data.total_warnings} warning{data.total_warnings !== 1 ? 's' : ''} detected ·
-              <span className="text-rose-400"> {data.high_warnings} HIGH</span> ·
-              <span className="text-amber-400"> {data.medium_warnings} MEDIUM</span> ·
-              <span className="text-sky-400"> {data.low_warnings} LOW</span>
-            </p>
+      {/* ─── Main Grid Layout ─────────────────────────────────────────── */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 glass-panel rounded-2xl overflow-hidden border border-white/[0.08] min-h-0">
+        {/* Sidebar File List */}
+        <div className="md:col-span-1 border-r border-white/[0.08] bg-black/20 flex flex-col min-h-0">
+          <div className="p-3.5 border-b border-white/[0.08]">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              Refactored Files
+            </span>
           </div>
-
-          {/* Diff mode toggle */}
-          <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-            {(['split', 'unified'] as const).map(m => (
+          <div className="overflow-y-auto flex-1 p-2 space-y-1">
+            {data.files.map((file, idx) => (
               <button
-                key={m}
-                onClick={() => setDiffMode(m)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition capitalize ${
-                  diffMode === m
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-400 hover:text-slate-200'
+                key={idx}
+                onClick={() => setSelectedFileIdx(idx)}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-mono transition flex items-center justify-between gap-2 ${
+                  selectedFileIdx === idx
+                    ? 'bg-violet-950/60 text-violet-300 border border-violet-800/60 font-semibold'
+                    : 'text-slate-300 hover:bg-white/[0.03]'
                 }`}
               >
-                {m}
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileCode className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                  <span className="truncate">{file.file_path.split('/').pop()}</span>
+                </div>
+                {file.high_count > 0 ? (
+                  <span className="text-[9px] text-rose-300 bg-rose-950/60 border border-rose-800/50 px-1.5 py-0.5 rounded font-bold shrink-0">
+                    {file.high_count} HIGH
+                  </span>
+                ) : (
+                  <span className="text-[9px] text-emerald-400 font-bold shrink-0">SAFE</span>
+                )}
               </button>
             ))}
           </div>
         </div>
 
-        {/* File detail */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#0B0F19]">
+        {/* Diff & Warnings View */}
+        <div className="md:col-span-3 flex flex-col p-5 bg-black/40 overflow-y-auto space-y-4 min-h-0">
           {selectedFile && (
             <>
-              {/* File summary */}
-              <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex items-start space-x-3">
-                <Sparkles className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-300">{selectedFile.refactor_summary}</p>
+              {/* Summary Banner */}
+              <div className="p-4 glass-card rounded-xl flex items-start gap-3 border border-white/[0.08]">
+                <Sparkles className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-300 leading-relaxed font-mono">
+                  {selectedFile.refactor_summary}
+                </p>
               </div>
 
-              {/* Diff */}
-              <DiffViewer file={selectedFile} mode={diffMode} />
+              {/* Diff Container */}
+              <div className="flex-1 min-h-[260px] flex flex-col">
+                <DiffViewer file={selectedFile} mode={diffMode} />
+              </div>
 
-              {/* Breaking changes */}
-              {selectedFile.breaking_changes.length > 0 ? (
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-widest flex items-center space-x-1.5">
-                    <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Breaking Change Warnings ({selectedFile.breaking_changes.length})</span>
-                  </h4>
-                  <div className="space-y-1.5">
+              {/* Breaking Changes Warnings */}
+              <div className="space-y-2.5 pt-2">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Breaking Change Impact ({selectedFile.breaking_changes.length})</span>
+                </h4>
+
+                {selectedFile.breaking_changes.length > 0 ? (
+                  <div className="space-y-2">
                     {selectedFile.breaking_changes.map((w, idx) => (
                       <BreakingChangeCard key={idx} warning={w} />
                     ))}
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2 p-3 bg-emerald-950/20 border border-emerald-800/30 rounded-lg">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <p className="text-xs text-emerald-300">No breaking changes detected — safe to apply this refactor.</p>
-                </div>
-              )}
+                ) : (
+                  <div className="flex items-center gap-2.5 p-4 bg-emerald-950/20 border border-emerald-800/30 rounded-xl text-xs text-emerald-300">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>No breaking changes detected — proposal preserves existing signatures and caller compatibility.</span>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 };

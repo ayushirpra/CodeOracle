@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
 import { ProjectExplanation, FileExplanation, SymbolExplanation } from '../services/api';
-import { AlertTriangle, CheckCircle2, FileCode, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
+import {
+  FileCode,
+  ChevronDown,
+  ChevronRight,
+  AlertCircle,
+  Sparkles,
+  Search,
+  BookOpen,
+  ArrowUpRight,
+  Code2
+} from 'lucide-react';
 
-// ─── Markdown-like renderer for Gemini text output ───────────────────────────
-// Renders bold (**text**), headings (### text), and bullet lists cleanly.
-function GeminiText({ text, className = '' }: { text: string; className?: string }) {
+// ─── Markdown Parser for Clean AI Output ────────────────────────────────────
+function GeminiContent({ text, className = '' }: { text: string; className?: string }) {
   const lines = text.split('\n');
   const elements: React.ReactNode[] = [];
 
@@ -15,31 +24,32 @@ function GeminiText({ text, className = '' }: { text: string; className?: string
       continue;
     }
 
-    // Heading: ### or **Heading**
+    // Headings
     if (/^#{1,3}\s/.test(line)) {
       const content = line.replace(/^#{1,3}\s/, '');
       elements.push(
-        <p key={i} className="text-slate-200 font-semibold text-sm mt-3 mb-1">
+        <h4 key={i} className="text-white font-bold text-sm mt-4 mb-1.5 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
           {renderInline(content)}
-        </p>
+        </h4>
       );
       continue;
     }
 
-    // Bullet
-    if (/^\s*[-*]\s/.test(line)) {
+    // Bullets
+    if (/^\s*[-*•]\s/.test(line)) {
       elements.push(
-        <li key={i} className="ml-4 text-slate-300 text-xs list-disc">
-          {renderInline(line.replace(/^\s*[-*]\s/, ''))}
+        <li key={i} className="ml-5 text-slate-300 text-xs list-disc leading-relaxed pl-1">
+          {renderInline(line.replace(/^\s*[-*•]\s/, ''))}
         </li>
       );
       continue;
     }
 
-    // Numbered list
+    // Numbered lists
     if (/^\s*\d+\.\s/.test(line)) {
       elements.push(
-        <li key={i} className="ml-4 text-slate-300 text-xs list-decimal">
+        <li key={i} className="ml-5 text-slate-300 text-xs list-decimal leading-relaxed pl-1">
           {renderInline(line.replace(/^\s*\d+\.\s/, ''))}
         </li>
       );
@@ -53,94 +63,136 @@ function GeminiText({ text, className = '' }: { text: string; className?: string
     );
   }
 
-  return <div className={`space-y-0.5 ${className}`}>{elements}</div>;
+  return <div className={`space-y-1.5 ${className}`}>{elements}</div>;
 }
 
 function renderInline(text: string): React.ReactNode {
-  // Bold: **text**
   const parts = text.split(/\*\*(.*?)\*\*/g);
   return parts.map((part, i) =>
-    i % 2 === 1
-      ? <strong key={i} className="text-slate-100 font-semibold">{part}</strong>
-      : <span key={i}>{part}</span>
+    i % 2 === 1 ? (
+      <strong key={i} className="text-white font-semibold">
+        {part}
+      </strong>
+    ) : (
+      <span key={i}>{part}</span>
+    )
   );
 }
 
-// ─── Symbol card ─────────────────────────────────────────────────────────────
-function SymbolCard({ sym }: { sym: SymbolExplanation }) {
+// ─── Symbol Row ─────────────────────────────────────────────────────────────
+function SymbolRow({ sym }: { sym: SymbolExplanation }) {
   const [open, setOpen] = useState(false);
-  const typeColor = sym.symbol_type === 'class'
-    ? 'text-indigo-400 bg-indigo-950/40 border-indigo-800/40'
-    : 'text-emerald-400 bg-emerald-950/40 border-emerald-800/40';
+  const isClass = sym.symbol_type === 'class';
 
   return (
-    <div className="border border-[#1E293B] rounded-lg overflow-hidden">
+    <div className="border border-white/[0.06] rounded-xl overflow-hidden glass-card">
       <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2.5 px-3 py-2 bg-[#0D1420] hover:bg-[#0f1928] transition-colors text-left"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-white/[0.04] transition-colors text-left"
       >
-        {open ? <ChevronDown size={13} className="text-slate-400 flex-shrink-0" /> : <ChevronRight size={13} className="text-slate-400 flex-shrink-0" />}
-        <span className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border ${typeColor} uppercase flex-shrink-0`}>
+        {open ? (
+          <ChevronDown size={13} className="text-slate-400 shrink-0" />
+        ) : (
+          <ChevronRight size={13} className="text-slate-400 shrink-0" />
+        )}
+        <span
+          className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 ${
+            isClass
+              ? 'text-indigo-300 bg-indigo-950/60 border-indigo-800/50'
+              : 'text-emerald-300 bg-emerald-950/60 border-emerald-800/50'
+          }`}
+        >
           {sym.symbol_type}
         </span>
-        <span className="text-xs text-slate-200 font-mono font-medium truncate">{sym.name}</span>
-        <span className="text-[10px] text-slate-500 font-mono ml-auto flex-shrink-0">
+        <span className="text-xs text-white font-mono font-medium truncate">{sym.name}</span>
+        <span className="text-[10px] text-slate-500 font-mono ml-auto shrink-0">
           L{sym.start_line}–{sym.end_line}
         </span>
       </button>
 
       {open && (
-        <div className="px-4 py-3 bg-[#0B0F19] space-y-3 border-t border-[#1E293B]">
+        <div className="px-4 py-3 bg-black/40 space-y-2 border-t border-white/[0.06]">
           {sym.summary ? (
-            <GeminiText text={sym.summary} />
+            <GeminiContent text={sym.summary} />
           ) : sym.uncertainty ? (
             <p className="text-xs text-amber-400 italic">{sym.uncertainty}</p>
           ) : null}
+
+          {sym.dependencies && sym.dependencies.length > 0 && (
+            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono pt-1">
+              <span className="text-slate-500">Dependencies:</span>
+              <span className="text-cyan-400">{sym.dependencies.join(', ')}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-// ─── File card ───────────────────────────────────────────────────────────────
-function FileCard({ fe }: { fe: FileExplanation }) {
+// ─── File Section ───────────────────────────────────────────────────────────
+function FileArticle({ fe }: { fe: FileExplanation }) {
   const [open, setOpen] = useState(false);
   const hasError = !!fe.error;
 
   return (
-    <div className={`border rounded-xl overflow-hidden ${hasError ? 'border-rose-800/50' : 'border-[#1E293B]'}`}>
+    <div
+      className={`border rounded-2xl overflow-hidden transition-all ${
+        hasError ? 'border-rose-500/40 bg-rose-950/20' : 'border-white/[0.08] glass-panel'
+      }`}
+    >
       <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-[#151C2C] hover:bg-[#1a2235] transition-colors text-left"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3.5 px-5 py-3.5 hover:bg-white/[0.03] transition-colors text-left"
       >
-        {open ? <ChevronDown size={14} className="text-slate-400 flex-shrink-0" /> : <ChevronRight size={14} className="text-slate-400 flex-shrink-0" />}
-        <FileCode size={14} className={fe.language === 'python' ? 'text-blue-400' : 'text-amber-400'} />
-        <span className="text-xs text-slate-200 font-mono truncate">{fe.path}</span>
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          <span className="text-[10px] text-slate-500 font-mono">{fe.total_lines}L</span>
-          {hasError && <AlertCircle size={13} className="text-rose-400" />}
+        {open ? (
+          <ChevronDown size={14} className="text-slate-400 shrink-0" />
+        ) : (
+          <ChevronRight size={14} className="text-slate-400 shrink-0" />
+        )}
+        <FileCode
+          size={16}
+          className={fe.language === 'python' ? 'text-blue-400 shrink-0' : 'text-amber-400 shrink-0'}
+        />
+        <div className="min-w-0 pr-2">
+          <span className="text-xs font-mono font-semibold text-white truncate block">
+            {fe.path}
+          </span>
+        </div>
+        <div className="ml-auto flex items-center gap-3 shrink-0">
+          <span className="text-[10px] text-slate-400 font-mono">{fe.total_lines}L</span>
+          {hasError && <AlertCircle size={14} className="text-rose-400" />}
           {fe.symbols.length > 0 && (
-            <span className="text-[10px] text-slate-500 font-mono">{fe.symbols.length} symbols</span>
+            <span className="text-[10px] text-slate-300 font-mono px-2 py-0.5 rounded-full bg-white/[0.06]">
+              {fe.symbols.length} symbols
+            </span>
           )}
         </div>
       </button>
 
       {open && (
-        <div className="px-4 py-3 bg-[#0B0F19] space-y-4 border-t border-[#1E293B]">
+        <div className="px-5 py-4 bg-black/40 space-y-4 border-t border-white/[0.06]">
           {hasError ? (
-            <div className="flex items-start gap-2 text-rose-300 text-xs bg-rose-950/30 border border-rose-800/40 rounded-lg p-3">
-              <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 text-rose-300 text-xs bg-rose-950/40 border border-rose-800/50 rounded-xl p-3">
+              <AlertCircle size={14} className="mt-0.5 shrink-0" />
               <span>{fe.error}</span>
             </div>
           ) : (
-            <GeminiText text={fe.summary} />
+            <div className="bg-white/[0.02] p-4 rounded-xl border border-white/[0.06]">
+              <GeminiContent text={fe.summary} />
+            </div>
           )}
 
           {fe.symbols.length > 0 && (
-            <div>
-              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-2">Symbols</p>
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <Code2 size={12} className="text-cyan-400" />
+                <span>Symbols & Contracts ({fe.symbols.length})</span>
+              </div>
               <div className="space-y-1.5">
-                {fe.symbols.map(sym => <SymbolCard key={sym.name} sym={sym} />)}
+                {fe.symbols.map((sym) => (
+                  <SymbolRow key={sym.name} sym={sym} />
+                ))}
               </div>
             </div>
           )}
@@ -150,7 +202,7 @@ function FileCard({ fe }: { fe: FileExplanation }) {
   );
 }
 
-// ─── Main ExplanationView ────────────────────────────────────────────────────
+// ─── Main Component ─────────────────────────────────────────────────────────
 interface ExplanationViewProps {
   explanation: ProjectExplanation | null;
   loading: boolean;
@@ -158,24 +210,33 @@ interface ExplanationViewProps {
   onLoad: () => void;
 }
 
-export default function ExplanationView({ explanation, loading, error, onLoad }: ExplanationViewProps) {
-  // Auto-trigger on first render if nothing loaded yet
+export default function ExplanationView({
+  explanation,
+  loading,
+  error,
+  onLoad,
+}: ExplanationViewProps) {
+  const [fileFilter, setFileFilter] = useState('');
+  const [showFullNarrative, setShowFullNarrative] = useState(false);
+
   React.useEffect(() => {
     if (!explanation && !loading && !error) {
       onLoad();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-400">
-        <div className="relative">
-          <div className="h-12 w-12 rounded-full border-2 border-cyan-800 border-t-cyan-400 animate-spin" />
+      <div className="flex flex-col items-center justify-center h-full p-12 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl glass-panel border border-cyan-500/30 flex items-center justify-center">
+          <Sparkles className="w-6 h-6 text-cyan-400 animate-spin" />
         </div>
-        <div className="text-center space-y-1">
-          <p className="text-sm font-medium text-slate-200">Generating explanation…</p>
-          <p className="text-xs text-slate-500 font-mono">Gemini is reading your codebase in parallel</p>
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-white">Generating Architectural Explanation</h3>
+          <p className="text-xs text-slate-400 font-mono">
+            Gemini is reading module structures and entry points in parallel...
+          </p>
         </div>
       </div>
     );
@@ -183,17 +244,17 @@ export default function ExplanationView({ explanation, loading, error, onLoad }:
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
-        <div className="flex items-start gap-3 text-rose-300 bg-rose-950/30 border border-rose-800/50 rounded-xl px-5 py-4 max-w-md text-sm">
-          <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold mb-1">Explanation failed</p>
-            <p className="text-xs text-rose-400/80">{error}</p>
-          </div>
+      <div className="flex flex-col items-center justify-center h-full p-12 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-rose-950/60 border border-rose-800/60 flex items-center justify-center text-rose-400">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <div className="space-y-1 max-w-md">
+          <h3 className="text-sm font-semibold text-white">Explanation Generation Failed</h3>
+          <p className="text-xs text-slate-400 leading-relaxed font-mono">{error}</p>
         </div>
         <button
           onClick={onLoad}
-          className="text-xs text-slate-400 hover:text-white border border-[#1E293B] hover:border-[#2A364F] px-4 py-2 rounded-lg transition-colors"
+          className="px-4 py-2 glass-card hover:bg-white/[0.08] text-slate-200 text-xs font-semibold rounded-xl transition-colors border border-white/[0.1]"
         >
           Retry
         </button>
@@ -203,74 +264,120 @@ export default function ExplanationView({ explanation, loading, error, onLoad }:
 
   if (!explanation) return null;
 
-  // Extract top-level bullets from overview for executive summary
-  const overviewLines = explanation.overview.split('\n').filter(l => l.trim());
-  const bulletLines = overviewLines.filter(l => /^[-*•]|\d+\./.test(l.trim())).slice(0, 3);
-  const summaryBullets = bulletLines.length > 0 ? bulletLines : overviewLines.slice(0, 3);
+  // Extract executive summary bullet lines
+  const rawLines = explanation.overview.split('\n').filter((l) => l.trim());
+  const bulletLines = rawLines.filter((l) => /^[-*•]|\d+\./.test(l.trim())).slice(0, 4);
+  const highlights = bulletLines.length > 0 ? bulletLines : rawLines.slice(0, 3);
+
+  const filteredFiles = explanation.files.filter((f) =>
+    f.path.toLowerCase().includes(fileFilter.toLowerCase())
+  );
 
   return (
-    <div className="h-full overflow-y-auto px-5 py-4 space-y-5">
-      {/* Partial warning */}
-      {explanation.partial && (
-        <div className="flex items-center gap-2 text-amber-400 text-xs bg-amber-950/20 border border-amber-800/40 rounded-lg px-3 py-2">
-          <AlertTriangle size={13} />
-          Some files could not be explained — results are partial.
-        </div>
-      )}
+    <div className="h-full overflow-y-auto p-6 space-y-6 max-w-5xl mx-auto">
+      {/* ─── Executive Summary Section ─────────────────────────────────── */}
+      <div className="glass-panel rounded-2xl p-6 sm:p-7 space-y-5 border border-white/[0.08] shadow-glass relative overflow-hidden">
+        {/* Glow */}
+        <div className="absolute top-0 right-0 w-64 h-32 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Executive Summary Banner */}
-      <div className="bg-gradient-to-br from-[#0f1928] to-[#151C2C] border border-cyan-800/30 rounded-xl p-4 space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-          <CheckCircle2 size={15} className="text-cyan-400" />
-          <span className="text-sm font-semibold text-white">Architecture Overview</span>
-          <span className="ml-auto text-[10px] font-mono text-slate-500">
-            {explanation.total_files} files · {explanation.total_lines.toLocaleString()} lines · {explanation.languages.join(', ')}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white tracking-tight">
+                Executive Architecture Summary
+              </h2>
+              <span className="text-[11px] font-mono text-slate-400">
+                Synthesized from AST static analysis
+              </span>
+            </div>
+          </div>
+
+          <span className="text-xs font-mono text-slate-400">
+            {explanation.total_files} files · {explanation.total_lines.toLocaleString()} lines
           </span>
         </div>
 
-        {/* Key points */}
-        <ul className="space-y-1.5">
-          {summaryBullets.map((line, i) => (
-            <li key={i} className="flex items-start gap-2 text-xs text-slate-300">
-              <span className="text-cyan-500 mt-0.5 flex-shrink-0">▸</span>
+        {/* Highlights List */}
+        <div className="space-y-2.5 pt-1">
+          {highlights.map((line, i) => (
+            <div key={i} className="flex items-start gap-3 text-xs text-slate-300 leading-relaxed">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0 mt-1.5"></span>
               <span>{line.replace(/^[-*•]\s*|\d+\.\s*/, '').trim()}</span>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
 
-        {explanation.entry_points.length > 0 && (
-          <div className="pt-2 border-t border-[#1E293B] flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Entry Points:</span>
-            {explanation.entry_points.map(ep => (
-              <span key={ep} className="text-[10px] font-mono text-cyan-400 bg-cyan-950/30 border border-cyan-800/40 rounded px-2 py-0.5">
-                {ep}
+        {/* Entry Points */}
+        {explanation.entry_points && explanation.entry_points.length > 0 && (
+          <div className="pt-3 border-t border-white/[0.06] flex items-center gap-2.5 flex-wrap text-xs">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              Identified Entry Points:
+            </span>
+            {explanation.entry_points.map((ep) => (
+              <span
+                key={ep}
+                className="font-mono text-[11px] text-cyan-300 bg-cyan-950/40 border border-cyan-800/50 rounded-lg px-2.5 py-0.5 flex items-center gap-1"
+              >
+                <span>{ep}</span>
+                <ArrowUpRight className="w-3 h-3 text-cyan-400 opacity-70" />
               </span>
             ))}
           </div>
         )}
+
+        {/* Full Overview Toggle */}
+        <div className="pt-1">
+          <button
+            onClick={() => setShowFullNarrative(!showFullNarrative)}
+            className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>{showFullNarrative ? 'Collapse Full Architecture Narrative' : 'Read Full Architecture Narrative'}</span>
+          </button>
+          {showFullNarrative && (
+            <div className="mt-4 p-5 bg-black/40 rounded-xl border border-white/[0.08]">
+              <GeminiContent text={explanation.overview} />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Full Overview — collapsible */}
-      <details className="group">
-        <summary className="text-xs font-mono text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors select-none">
-          Full Gemini Overview ▸
-        </summary>
-        <div className="mt-3 bg-[#151C2C] border border-[#1E293B] rounded-xl p-4">
-          <GeminiText text={explanation.overview} />
+      {/* ─── Files Breakdown Section ───────────────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Module & Symbol Breakdown</h3>
+            <p className="text-xs text-slate-400">
+              Detailed descriptions of modules and individual AST symbols
+            </p>
+          </div>
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search files..."
+              value={fileFilter}
+              onChange={(e) => setFileFilter(e.target.value)}
+              className="glass-input rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 outline-none w-48 transition-colors font-mono"
+            />
+          </div>
         </div>
-      </details>
 
-      {/* Per-file explanations */}
-      {explanation.files.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-mono text-slate-500 uppercase tracking-wider">
-            File Explanations ({explanation.files.length})
-          </p>
-          {explanation.files.map(fe => (
-            <FileCard key={fe.path} fe={fe} />
-          ))}
-        </div>
-      )}
+        {filteredFiles.length > 0 ? (
+          <div className="space-y-3">
+            {filteredFiles.map((fe) => (
+              <FileArticle key={fe.path} fe={fe} />
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center text-xs text-slate-500 glass-panel rounded-2xl border border-white/[0.08] font-mono">
+            No matching files found.
+          </div>
+        )}
+      </div>
     </div>
   );
 }

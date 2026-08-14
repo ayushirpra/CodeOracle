@@ -5,42 +5,39 @@ import {
   fetchJobGraph, fetchJobExplanation,
   JobResponse, GraphData, ProjectExplanation,
 } from './services/api';
-import DependencyGraph from './components/DependencyGraph';
+import OverviewView from './components/OverviewView';
 import ExplanationView from './components/ExplanationView';
-import { TestResultsView } from './components/TestResultsView';
-import { RefactorView } from './components/RefactorView';
+import TestResultsView from './components/TestResultsView';
+import RefactorView from './components/RefactorView';
 import {
-  Activity, CheckCircle2, RefreshCw,
-  Cpu, GitBranch, Upload, Link, Network,
-  X, AlertTriangle, Sparkles,
+  LayoutDashboard,
+  Sparkles,
+  ShieldCheck,
+  RefreshCw,
+  GitBranch,
+  Upload,
+  Link2,
+  Cpu,
+  Plus,
+  AlertTriangle,
+  ArrowRight,
+  SearchCode
 } from 'lucide-react';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+type AppStage = 'landing' | 'processing' | 'results';
+type ResultTab = 'overview' | 'explanation' | 'tests' | 'refactor';
 
-type AppView = 'landing' | 'processing' | 'results';
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-function StatusDot({ ok }: { ok: boolean }) {
+// ─── Status Indicator ───────────────────────────────────────────────────────
+function StatusBadge({ connected }: { connected: boolean }) {
   return (
-    <span className={`inline-block h-2 w-2 rounded-full flex-shrink-0 ${ok ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full glass-card text-[11px] font-mono text-slate-400">
+      <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+      <span>{connected ? 'Engine Active' : 'Connecting...'}</span>
+    </div>
   );
 }
 
-function LangBadge({ lang }: { lang: string }) {
-  const colors: Record<string, string> = {
-    python: 'text-blue-400 bg-blue-950/50 border-blue-800/50',
-    javascript: 'text-amber-400 bg-amber-950/50 border-amber-800/50',
-  };
-  return (
-    <span className={`text-[10px] font-mono font-medium px-2 py-0.5 rounded-full border ${colors[lang] ?? 'text-slate-400 bg-slate-900 border-slate-700'} uppercase tracking-wide`}>
-      {lang}
-    </span>
-  );
-}
-
-// ─── Upload / Landing View ────────────────────────────────────────────────────
-
+// ─── Home / Landing View ────────────────────────────────────────────────────
 function LandingView({
   health,
   onUpload,
@@ -50,144 +47,263 @@ function LandingView({
   onUpload: (f: File) => void;
   onGitHub: (url: string) => void;
 }) {
+  const [activeMode, setActiveMode] = useState<'zip' | 'github'>('zip');
   const [githubUrl, setGithubUrl] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file?.name.endsWith('.zip')) onUpload(file);
-  }, [onUpload]);
+    if (file?.name.endsWith('.zip')) {
+      setSelectedFile(file);
+    }
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (activeMode === 'zip' && selectedFile) {
+      onUpload(selectedFile);
+    } else if (activeMode === 'github' && githubUrl.trim()) {
+      onGitHub(githubUrl.trim());
+    }
+  };
 
   return (
-    <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-12 flex flex-col gap-8">
-      {/* Hero */}
-      <div className="text-center space-y-3">
-        <h2 className="text-3xl font-bold text-white tracking-tight">
-          Understand any legacy codebase in minutes
-        </h2>
-        <p className="text-slate-400 max-w-xl mx-auto text-sm">
-          Upload a ZIP archive or paste a public GitHub URL — CodeOracle analyses Python and JavaScript
-          projects, maps dependencies, generates tests, and proposes safe refactors.
+    <main className="flex-1 overflow-y-auto min-h-0 w-full px-6 py-10 flex flex-col items-center">
+      <div className="max-w-5xl w-full flex flex-col justify-center gap-10 my-auto py-4">
+        {/* Hero Section */}
+        <div className="text-center space-y-4 max-w-3xl mx-auto">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full glass-card border border-cyan-500/20 text-cyan-400 text-xs font-mono tracking-wide">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Next-Gen Static & AI Code Intelligence</span>
+        </div>
+
+        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
+          Understand. Test. Modernize.
+        </h1>
+
+        <p className="text-slate-400 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto font-normal">
+          CodeOracle parses AST contracts, maps module dependencies, generates full unit tests, and drafts safe refactorings for legacy Python & JavaScript codebases.
         </p>
       </div>
 
-      {/* Input cards */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* ZIP Drop Zone */}
-        <div
-          onDragOver={e => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => fileRef.current?.click()}
-          className={`relative flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed cursor-pointer transition-all
-            ${dragging ? 'border-cyan-400 bg-cyan-950/20' : 'border-[#1E293B] bg-[#151C2C] hover:border-cyan-700 hover:bg-[#1a2235]'}`}
-        >
-          <Upload className="h-8 w-8 text-cyan-400" />
-          <div className="text-center">
-            <p className="text-sm font-medium text-white">Drop ZIP archive here</p>
-            <p className="text-xs text-slate-400 mt-1">or click to browse · max 10,000 source lines</p>
-          </div>
-          <div className="flex gap-2">
-            <LangBadge lang="python" />
-            <LangBadge lang="javascript" />
-          </div>
-          <input ref={fileRef} type="file" accept=".zip" className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
+      {/* Unified Ingestion Glass Card */}
+      <div className="max-w-2xl w-full mx-auto glass-panel rounded-2xl p-6 sm:p-8 shadow-glass border border-white/[0.08] relative overflow-hidden">
+        {/* Ambient Card Glow */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Ingestion Mode Toggle */}
+        <div className="flex items-center p-1 bg-black/40 rounded-xl border border-white/[0.06] mb-6">
+          <button
+            onClick={() => setActiveMode('zip')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              activeMode === 'zip'
+                ? 'bg-white/[0.08] text-white shadow-sm border border-white/[0.08]'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Upload className="w-4 h-4" />
+            <span>Upload ZIP Archive</span>
+          </button>
+          <button
+            onClick={() => setActiveMode('github')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              activeMode === 'github'
+                ? 'bg-white/[0.08] text-white shadow-sm border border-white/[0.08]'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <GitBranch className="w-4 h-4" />
+            <span>Public GitHub Repo</span>
+          </button>
         </div>
 
-        {/* GitHub URL */}
-        <div className="flex flex-col gap-3 p-6 rounded-xl border border-[#1E293B] bg-[#151C2C]">
-          <div className="flex items-center gap-2 text-slate-300">
-            <GitBranch className="h-5 w-5 text-indigo-400" />
-            <span className="text-sm font-medium">Public GitHub Repository</span>
+        {/* Mode Content */}
+        {activeMode === 'zip' ? (
+          <div className="space-y-5">
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`group flex flex-col items-center justify-center p-8 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200 ${
+                dragging
+                  ? 'border-cyan-400 bg-cyan-500/[0.06]'
+                  : selectedFile
+                  ? 'border-cyan-500/50 bg-cyan-950/20'
+                  : 'border-white/[0.1] bg-black/30 hover:border-white/[0.2] hover:bg-white/[0.02]'
+              }`}
+            >
+              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-3 group-hover:scale-105 transition-transform">
+                <Upload className="w-6 h-6" />
+              </div>
+
+              {selectedFile ? (
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-semibold text-white font-mono">{selectedFile.name}</p>
+                  <p className="text-xs text-cyan-400 font-mono">
+                    {(selectedFile.size / 1024).toFixed(1)} KB · Ready to analyze
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-medium text-white">
+                    Drop your project ZIP here, or <span className="text-cyan-400 underline underline-offset-2">browse</span>
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Supports Python & JavaScript repos up to 10,000 lines
+                  </p>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".zip"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </div>
           </div>
-          <input
-            type="url"
-            value={githubUrl}
-            onChange={e => setGithubUrl(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && githubUrl && onGitHub(githubUrl)}
-            placeholder="https://github.com/owner/repository"
-            className="bg-[#0B0F19] border border-[#2A364F] rounded-lg px-3 py-2.5 text-sm font-mono text-slate-200
-              placeholder:text-slate-600 outline-none focus:border-indigo-500 transition-colors"
-          />
-          <button
-            onClick={() => githubUrl && onGitHub(githubUrl)}
-            disabled={!githubUrl}
-            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40
-              text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
-          >
-            <Link className="h-4 w-4" /> Analyse Repository
-          </button>
-          <p className="text-xs text-slate-500">Public repositories only · no login required</p>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                Repository URL
+              </label>
+              <div className="relative">
+                <Link2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="url"
+                  value={githubUrl}
+                  onChange={(e) => setGithubUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && githubUrl && handleSubmit()}
+                  placeholder="https://github.com/owner/repository"
+                  className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-xs font-mono text-slate-200 placeholder:text-slate-500 outline-none transition-colors"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              No credentials or access tokens required for public repositories.
+            </p>
+          </div>
+        )}
+
+        {/* Primary Action Button */}
+        <button
+          onClick={handleSubmit}
+          disabled={activeMode === 'zip' ? !selectedFile : !githubUrl.trim()}
+          className="w-full mt-6 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 disabled:opacity-30 disabled:pointer-events-none text-white font-semibold text-sm transition-all duration-200 shadow-glow-cyan"
+        >
+          <span>Analyze Project</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
+
+        {/* Footer Note */}
+        <div className="mt-4 flex items-center justify-between text-[11px] font-mono text-slate-500 pt-3 border-t border-white/[0.06]">
+          <span>Max 10,000 source lines</span>
+          <StatusBadge connected={!!health} />
         </div>
       </div>
 
-      {/* Backend status */}
-      <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-mono">
-        <StatusDot ok={!!health} />
-        <span>Backend {health ? 'connected' : 'disconnected'} · /api/health</span>
+      {/* 3-Step Visual Process */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto w-full">
+        <div className="glass-card rounded-xl p-5 space-y-2">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <SearchCode className="w-4 h-4" />
+          </div>
+          <h2 className="text-sm font-semibold text-white">1. Static AST Analysis</h2>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Parses classes, function signatures, and builds an exact module dependency graph.
+          </p>
+        </div>
+
+        <div className="glass-card rounded-xl p-5 space-y-2">
+          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <h2 className="text-sm font-semibold text-white">2. AI Architecture Map</h2>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Generates executive architectural summaries, entry points, and symbol explanations.
+          </p>
+        </div>
+
+        <div className="glass-card rounded-xl p-5 space-y-2">
+          <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <h2 className="text-sm font-semibold text-white">3. Tests & Refactoring</h2>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Generates full test suites and drafts safe, AST-verified modernization refactorings.
+          </p>
+        </div>
+      </div>
       </div>
     </main>
   );
 }
 
-// ─── Processing View ──────────────────────────────────────────────────────────
-
+// ─── Processing View ────────────────────────────────────────────────────────
 function ProcessingView({ source }: { source: string }) {
-  const [stageIdx, setStageIdx] = useState(0);
-  const stages = [
-    { label: 'Unpacking archive', sub: 'Scanning files & filtering boilerplate' },
-    { label: 'Building AST', sub: 'Parsing functions, classes & imports' },
-    { label: 'Mapping dependencies', sub: 'Constructing dependency graph' },
-    { label: 'Ready', sub: 'Loading results…' },
+  const [step, setStep] = useState(0);
+  const steps = [
+    'Parsing project files & extracting AST structures',
+    'Analyzing function signatures & module dependencies',
+    'Generating architectural graph',
+    'Finalizing intelligence dashboard',
   ];
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setStageIdx(i => Math.min(i + 1, stages.length - 1));
-    }, 2800);
-    return () => clearInterval(id);
-  }, []);
-
-  const current = stages[stageIdx];
+    const timer = setInterval(() => {
+      setStep((s) => (s < steps.length - 1 ? s + 1 : s));
+    }, 1200);
+    return () => clearInterval(timer);
+  }, [steps.length]);
 
   return (
-    <main className="flex-1 flex flex-col items-center justify-center gap-8 px-6">
-      <div className="text-center space-y-2">
-        <div className="h-12 w-12 mx-auto rounded-full bg-cyan-950/40 border border-cyan-800/50 flex items-center justify-center">
-          <RefreshCw className="h-6 w-6 text-cyan-400 animate-spin" />
+    <main className="flex-1 overflow-y-auto min-h-0 flex flex-col items-center justify-center gap-6 px-6 max-w-md mx-auto py-8">
+      <div className="relative">
+        <div className="w-16 h-16 rounded-2xl glass-panel flex items-center justify-center border border-cyan-500/30">
+          <RefreshCw className="w-7 h-7 text-cyan-400 animate-spin" />
         </div>
-        <h2 className="text-xl font-semibold text-white">{current.label}</h2>
-        <p className="text-sm text-slate-400 font-mono truncate max-w-md">{source}</p>
-        <p className="text-xs text-slate-500">{current.sub}</p>
+        <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full -z-10" />
       </div>
-      {/* Stage progress dots */}
-      <div className="flex items-center gap-2">
-        {stages.map((s, i) => (
-          <React.Fragment key={s.label}>
-            <div className="flex flex-col items-center gap-1">
-              <div
-                className={`h-2.5 w-2.5 rounded-full transition-all duration-500 ${
-                  i <= stageIdx ? 'bg-cyan-400' : 'bg-slate-700'
-                }`}
-              />
-              <span className="text-[10px] text-slate-400 font-mono">{s.label.split(' ')[0]}</span>
-            </div>
-            {i < stages.length - 1 && (
-              <div className={`h-px w-8 mb-3 transition-all duration-500 ${i < stageIdx ? 'bg-cyan-500' : 'bg-slate-700'}`} />
-            )}
-          </React.Fragment>
-        ))}
+
+      <div className="text-center space-y-2">
+        <h2 className="text-lg font-bold text-white tracking-tight">Analyzing Codebase</h2>
+        <p className="text-xs font-mono text-cyan-400 truncate max-w-xs mx-auto">
+          {source}
+        </p>
+        <p className="text-xs text-slate-400 font-mono pt-1">
+          {steps[step]}...
+        </p>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="w-full bg-black/40 h-1.5 rounded-full overflow-hidden border border-white/[0.06]">
+        <div
+          className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-500"
+          style={{ width: `${((step + 1) / steps.length) * 100}%` }}
+        />
       </div>
     </main>
   );
 }
 
-// ─── Results View ─────────────────────────────────────────────────────────────
-
+// ─── Results Dashboard View ─────────────────────────────────────────────────
 function ResultsView({
   job,
   graphData,
@@ -195,7 +311,6 @@ function ResultsView({
   explanationLoading,
   explanationError,
   onLoadExplanation,
-  onReset,
 }: {
   job: JobResponse;
   graphData: GraphData | null;
@@ -203,68 +318,60 @@ function ResultsView({
   explanationLoading: boolean;
   explanationError: string | null;
   onLoadExplanation: () => void;
-  onReset: () => void;
 }) {
-  const stats = job.stats;
-  const [activeTab, setActiveTab] = useState<'graph' | 'explanation' | 'tests' | 'refactor'>('graph');
-  const tabs = [
-    { id: 'graph', label: 'Dependency Graph', icon: Network },
-    { id: 'explanation', label: 'Explanation', icon: Sparkles },
-    { id: 'tests', label: 'Generated Tests', icon: CheckCircle2 },
-    { id: 'refactor', label: 'Refactored Code', icon: Activity },
-  ] as const;
+  const [activeTab, setActiveTab] = useState<ResultTab>('overview');
+
+  const navTabs = [
+    { id: 'overview' as const, label: 'Overview', icon: LayoutDashboard },
+    { id: 'explanation' as const, label: 'Explain', icon: Sparkles },
+    { id: 'tests' as const, label: 'Tests', icon: ShieldCheck },
+    { id: 'refactor' as const, label: 'Refactor', icon: RefreshCw },
+  ];
 
   return (
-    <main className="flex-1 flex flex-col overflow-hidden">
-      {/* Project header bar */}
-      <div className="px-6 py-3 bg-[#151C2C] border-b border-[#1E293B] flex items-center justify-between gap-4 flex-shrink-0">
-        <div className="flex items-center gap-4 min-w-0">
-          <span className="text-sm font-semibold text-white font-mono truncate">
-            {job.source_info}
-          </span>
-          <div className="flex gap-2 flex-shrink-0">
-            {stats?.languages.map(l => <LangBadge key={l} lang={l} />)}
-          </div>
-          {stats && (
-            <div className="flex gap-4 text-xs font-mono text-slate-400 flex-shrink-0">
-              <span>{stats.total_files} files</span>
-              <span>{stats.total_lines.toLocaleString()} lines</span>
-            </div>
-          )}
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Subheader Navigation Bar */}
+      <div className="border-b border-white/[0.08] glass-panel px-6 flex items-center justify-between shrink-0">
+        {/* Navigation Tabs */}
+        <nav className="flex space-x-1" aria-label="Tabs">
+          {navTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold border-b-2 transition-all duration-150 ${
+                  isActive
+                    ? 'border-cyan-400 text-cyan-400 bg-cyan-950/20'
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.02]'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Project Meta Info */}
+        <div className="hidden sm:flex items-center gap-3 text-xs font-mono text-slate-400">
+          <span className="truncate max-w-[220px] text-slate-200 font-medium">{job.source_info}</span>
+          <span className="text-slate-600">·</span>
+          <span>{job.stats?.total_files ?? 0} files</span>
+          <span className="text-slate-600">·</span>
+          <span>{(job.stats?.total_lines ?? 0).toLocaleString()} lines</span>
         </div>
-        <button onClick={onReset}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white border border-[#1E293B] hover:border-[#2A364F] rounded-lg px-3 py-1.5 transition-colors flex-shrink-0">
-          <X className="h-3.5 w-3.5" /> New Project
-        </button>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-[#1E293B] px-4 flex-shrink-0">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors
-              ${activeTab === tab.id
-                ? 'border-cyan-400 text-cyan-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'}`}
-          >
-            <tab.icon className="h-3.5 w-3.5" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div className="flex-1 overflow-hidden relative">
-        {activeTab === 'graph' && (
-          graphData ? (
-            <DependencyGraph graphData={graphData} />
-          ) : (
-            <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-              Building dependency graph…
-            </div>
-          )
+      {/* Main Tab View */}
+      <div className="flex-1 overflow-y-auto relative min-h-0">
+        {activeTab === 'overview' && (
+          <OverviewView
+            job={job}
+            graphData={graphData}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+          />
         )}
         {activeTab === 'explanation' && (
           <ExplanationView
@@ -274,26 +381,17 @@ function ResultsView({
             onLoad={onLoadExplanation}
           />
         )}
-        {activeTab === 'tests' && (
-          <div className="h-full overflow-y-auto p-6 bg-[#0B0F19]">
-            <TestResultsView jobId={job.job_id} />
-          </div>
-        )}
-        {activeTab === 'refactor' && (
-          <div className="h-full overflow-hidden bg-[#0B0F19]">
-            <RefactorView jobId={job.job_id} />
-          </div>
-        )}
+        {activeTab === 'tests' && <TestResultsView jobId={job.job_id} />}
+        {activeTab === 'refactor' && <RefactorView jobId={job.job_id} />}
       </div>
-    </main>
+    </div>
   );
 }
 
-// ─── Root App ─────────────────────────────────────────────────────────────────
-
+// ─── Root App Component ─────────────────────────────────────────────────────
 export const App: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [view, setView] = useState<AppView>('landing');
+  const [stage, setStage] = useState<AppStage>('landing');
   const [processingSource, setProcessingSource] = useState('');
   const [currentJob, setCurrentJob] = useState<JobResponse | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
@@ -308,33 +406,33 @@ export const App: React.FC = () => {
 
   async function handleUpload(file: File) {
     setError(null);
-    setView('processing');
+    setStage('processing');
     setProcessingSource(file.name);
     try {
       const job = await uploadZip(file);
       setCurrentJob(job);
       const graph = await fetchJobGraph(job.job_id);
       setGraphData(graph);
-      setView('results');
+      setStage('results');
     } catch (err: any) {
-      setError(err.message || 'Upload failed');
-      setView('landing');
+      setError(err.message || 'Project upload and analysis failed');
+      setStage('landing');
     }
   }
 
   async function handleGitHub(url: string) {
     setError(null);
-    setView('processing');
+    setStage('processing');
     setProcessingSource(url);
     try {
       const job = await ingestGitHub(url);
       setCurrentJob(job);
       const graph = await fetchJobGraph(job.job_id);
       setGraphData(graph);
-      setView('results');
+      setStage('results');
     } catch (err: any) {
-      setError(err.message || 'GitHub ingestion failed');
-      setView('landing');
+      setError(err.message || 'GitHub ingestion and analysis failed');
+      setStage('landing');
     }
   }
 
@@ -346,14 +444,14 @@ export const App: React.FC = () => {
       const data = await fetchJobExplanation(currentJob.job_id);
       setExplanation(data);
     } catch (err: any) {
-      setExplanationError(err.message || 'Failed to generate explanation');
+      setExplanationError(err.message || 'Failed to generate codebase explanation');
     } finally {
       setExplanationLoading(false);
     }
   }
 
-  function reset() {
-    setView('landing');
+  function handleReset() {
+    setStage('landing');
     setCurrentJob(null);
     setGraphData(null);
     setExplanation(null);
@@ -363,36 +461,54 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#0B0F19] text-slate-100 font-sans overflow-hidden">
-      {/* Header */}
-      <header className="border-b border-[#1E293B] bg-[#151C2C]/90 backdrop-blur px-6 py-3 flex-shrink-0 flex items-center justify-between z-50">
-        <button onClick={reset} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+    <div className="h-screen flex flex-col bg-ambient text-slate-100 font-sans overflow-hidden">
+      {/* Global Minimal Glass Navbar */}
+      <header className="border-b border-white/[0.08] glass-panel px-6 py-3 shrink-0 flex items-center justify-between z-50">
+        <button
+          onClick={handleReset}
+          className="flex items-center gap-3 hover:opacity-90 transition-opacity text-left group"
+        >
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-glow-cyan">
             <Cpu className="h-5 w-5 text-white" />
           </div>
           <div>
-            <span className="text-base font-bold text-white font-mono tracking-tight">CodeOracle</span>
-            <p className="text-[10px] text-slate-400 leading-none mt-0.5">Legacy Codebase Intelligence</p>
+            <span className="text-base font-bold text-white font-mono tracking-tight block leading-none">
+              CodeOracle
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              Codebase Intelligence
+            </span>
           </div>
         </button>
 
         <div className="flex items-center gap-3">
           {error && (
-            <div className="flex items-center gap-2 text-xs text-rose-300 bg-rose-950/40 border border-rose-800/50 rounded-lg px-3 py-1.5 max-w-xs truncate">
-              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" /> {error}
+            <div className="flex items-center gap-2 text-xs text-rose-300 bg-rose-950/60 border border-rose-800/60 rounded-xl px-3 py-1.5 max-w-sm truncate">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+              <span className="truncate">{error}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 bg-[#0B0F19] px-3 py-1.5 rounded-lg border border-[#1E293B] text-xs font-mono">
-            <StatusDot ok={!!health} />
-            <span className="text-slate-300">{health ? 'Connected' : 'Backend offline'}</span>
-          </div>
+
+          {stage === 'results' && (
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-200 glass-card hover:bg-white/[0.08] border border-white/[0.1] rounded-xl px-3.5 py-1.5 transition-all shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5 text-cyan-400" />
+              <span>New Project</span>
+            </button>
+          )}
         </div>
       </header>
 
-      {/* Body */}
-      {view === 'landing' && <LandingView health={health} onUpload={handleUpload} onGitHub={handleGitHub} />}
-      {view === 'processing' && <ProcessingView source={processingSource} />}
-      {view === 'results' && currentJob && (
+      {/* Body Flow */}
+      {stage === 'landing' && (
+        <LandingView health={health} onUpload={handleUpload} onGitHub={handleGitHub} />
+      )}
+
+      {stage === 'processing' && <ProcessingView source={processingSource} />}
+
+      {stage === 'results' && currentJob && (
         <ResultsView
           job={currentJob}
           graphData={graphData}
@@ -400,15 +516,7 @@ export const App: React.FC = () => {
           explanationLoading={explanationLoading}
           explanationError={explanationError}
           onLoadExplanation={handleLoadExplanation}
-          onReset={reset}
         />
-      )}
-
-      {/* Footer */}
-      {view === 'landing' && (
-        <footer className="border-t border-[#1E293B] py-3 px-6 text-center text-xs text-slate-500 font-mono flex-shrink-0">
-          CodeOracle © 2026 · Python & JavaScript Static Analysis · Render Deployment
-        </footer>
       )}
     </div>
   );
