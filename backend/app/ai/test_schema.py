@@ -16,6 +16,7 @@ class GeneratedTestFile(BaseModel):
 
 class TestCaseResult(BaseModel):
     """Result of an individual test case execution."""
+    __test__ = False
     name: str                      # Name of the test case, e.g. 'test_add_positive_numbers'
     status: str                    # 'passed' | 'failed' | 'error' | 'skipped'
     duration_seconds: float = 0.0
@@ -24,6 +25,7 @@ class TestCaseResult(BaseModel):
 
 class TestCoverageSummary(BaseModel):
     """Line coverage summary extracted from coverage reports (e.g. coverage.json)."""
+    __test__ = False
     covered_lines: int = 0
     total_lines: int = 0
     coverage_percent: float = 0.0
@@ -32,6 +34,7 @@ class TestCoverageSummary(BaseModel):
 
 class TestExecutionResult(BaseModel):
     """Combined output of running the test suite in Docker."""
+    __test__ = False
     status: str                    # 'passed' | 'failed' | 'error'
     total_tests: int = 0
     passed_tests: int = 0
@@ -47,6 +50,10 @@ class TestExecutionResult(BaseModel):
 
 class JobTestResults(BaseModel):
     """Complete test suite package for a job."""
+    __test__ = False
     generated_files: List[GeneratedTestFile] = Field(default_factory=list)
     execution: Optional[TestExecutionResult] = None
+    retry_count: int = 0
+    target_reached: bool = False
+    coverage_history: List[float] = Field(default_factory=list)
     error: Optional[str] = None

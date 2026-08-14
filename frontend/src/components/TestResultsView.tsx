@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { fetchJobTests, JobTestResults, GeneratedTestFile, TestCaseResult } from '../services/api';
+import { fetchJobTests, retryJobTests, JobTestResults, GeneratedTestFile, TestCaseResult } from '../services/api';
 import {
   ShieldCheck, ShieldAlert, CheckCircle2, XCircle,
-  FileCode, Terminal, AlertTriangle, Copy, Check, Play, RefreshCw
+  FileCode, Terminal, Copy, Check, Play, RefreshCw, Zap
 } from 'lucide-react';
 
 interface TestResultsViewProps {
@@ -12,6 +12,7 @@ interface TestResultsViewProps {
 export const TestResultsView: React.FC<TestResultsViewProps> = ({ jobId }) => {
   const [data, setData] = useState<JobTestResults | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [retrying, setRetrying] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'files' | 'cases' | 'terminal'>('files');
   const [selectedFileIndex, setSelectedFileIndex] = useState<number>(0);
@@ -27,6 +28,18 @@ export const TestResultsView: React.FC<TestResultsViewProps> = ({ jobId }) => {
       setError(err?.message || 'Failed to generate or execute test suite.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTargetedRetry = async () => {
+    setRetrying(true);
+    try {
+      const res = await retryJobTests(jobId);
+      setData(res);
+    } catch (err: any) {
+      setError(err?.message || 'Targeted retry refinement failed.');
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -166,16 +179,52 @@ export const TestResultsView: React.FC<TestResultsViewProps> = ({ jobId }) => {
         </div>
       </div>
 
-      {/* Execution Error Banner if any */}
-      {execution?.error && (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start space-x-3">
-          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-200">
-            <span className="font-semibold">Sandbox Execution Warning: </span>
-            {execution.error}
+      {/* ─── Bounded Coverage Retry Banner ──────────────────────────── */}
+      <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
+        <div className="flex items-center space-x-3 text-xs">
+          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">
+            <Zap className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-semibold text-slate-200 flex items-center space-x-2">
+              <span>Coverage Refinement (Retries: {data.retry_count ?? 0}/2)</span>
+              {data.target_reached ? (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  Target (&gt;60%) Reached
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                  Refinement Active
+                </span>
+              )}
+            </div>
+            {data.coverage_history && data.coverage_history.length > 0 && (
+              <div className="text-[11px] text-slate-400 mt-0.5 flex items-center space-x-1 font-mono">
+                <span>Coverage Trend:</span>
+                {data.coverage_history.map((cov, idx) => (
+                  <React.Fragment key={idx}>
+                    {idx > 0 && <span className="text-slate-600">→</span>}
+                    <span className={cov >= 60 ? 'text-emerald-400 font-semibold' : 'text-amber-400'}>
+                      {cov.toFixed(1)}%
+                    </span>
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        {!data.target_reached && (data.retry_count ?? 0) < 2 && (
+          <button
+            onClick={handleTargetedRetry}
+            disabled={retrying}
+            className="flex items-center space-x-2 px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition shadow-md shadow-cyan-900/20"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${retrying ? 'animate-spin' : ''}`} />
+            <span>{retrying ? 'Generating Targeted Tests...' : 'Run Targeted Retry'}</span>
+          </button>
+        )}
+      </div>
 
       {/* ─── Tabs Navigation ────────────────────────────────────────── */}
       <div className="flex items-center space-x-2 border-b border-slate-800 pb-2">

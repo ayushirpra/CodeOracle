@@ -101,6 +101,21 @@ async def get_or_generate_job_tests(job_id: str):
     exec_result = docker_runner.run_tests(job_dir=job_dir, language=primary_lang)
     test_results.execution = exec_result
 
+    if exec_result.coverage:
+        test_results.coverage_history = [exec_result.coverage.coverage_percent]
+        test_results.target_reached = exec_result.coverage.coverage_percent >= 60.0
+
+    # Step 4: Bounded retries if line coverage < 60%
+    if exec_result.coverage and exec_result.coverage.coverage_percent < 60.0:
+        test_results = test_generator.refine_tests_for_coverage(
+            project=project_analysis,
+            job_dir=job_dir,
+            job_tests=test_results,
+            primary_lang=primary_lang,
+            target_percent=60.0,
+            max_retries=2
+        )
+
     # Save to job state
     job_manager.update_job(
         job_id=job_id,
@@ -110,3 +125,48 @@ async def get_or_generate_job_tests(job_id: str):
     )
 
     return test_results
+
+
+@router.post("/{job_id}/retry-tests", response_model=JobTestResults)
+async def retry_job_tests(job_id: str):
+    """
+    Triggers an explicit targeted retry iteration to elevate line coverage toward >60%.
+    Appends targeted tests for uncovered lines and re-runs in Docker sandbox.
+    """
+    job = job_manager.get_job(job_id)
+    if not job or job.get("status") != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job must be completed before retrying tests."
+        )
+
+    stats = job.get("stats")
+    cached_tests = job.get("tests_result")
+    if not stats or not cached_tests:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job statistics or test results not found."
+        )
+
+    project_analysis = ProjectAnalysis.model_validate(stats)
+    test_results = JobTestResults.model_validate(cached_tests)
+    job_dir = job.get("job_dir") or job_manager.get_job_dir(job_id)
+    primary_lang = project_analysis.primary_language or "python"
+
+    refined_results = test_generator.refine_tests_for_coverage(
+        project=project_analysis,
+        job_dir=job_dir,
+        job_tests=test_results,
+        primary_lang=primary_lang,
+        target_percent=60.0,
+        max_retries=2
+    )
+
+    job_manager.update_job(
+        job_id=job_id,
+        status="completed",
+        stage="tests",
+        tests_result=refined_results.model_dump()
+    )
+
+    return refined_results

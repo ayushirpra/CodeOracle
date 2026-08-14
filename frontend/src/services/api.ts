@@ -204,11 +204,18 @@ export interface TestExecutionResult {
 export interface JobTestResults {
   generated_files: GeneratedTestFile[];
   execution?: TestExecutionResult;
+  retry_count?: number;
+  target_reached?: boolean;
+  coverage_history?: number[];
   error?: string;
 }
 
 export async function fetchJobTests(jobId: string): Promise<JobTestResults> {
   return apiFetch<JobTestResults>(`/api/jobs/${jobId}/tests`);
+}
+
+export async function retryJobTests(jobId: string): Promise<JobTestResults> {
+  return apiFetch<JobTestResults>(`/api/jobs/${jobId}/retry-tests`, { method: 'POST' });
 }
 
 export async function deleteJob(jobId: string): Promise<void> {

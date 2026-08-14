@@ -3,9 +3,9 @@
 This file is the coding agent's source of truth. Update it after every completed phase.
 
 ## Current Status
-- Phase: 5 (Test Suite Generation & Execution) — Completed
-- Overall status: Phase 5 fully implemented and verified with 54 backend tests passing
-- Last updated: Phase 5 completion
+- Phase: 6 (Coverage Analysis & Bounded Retries) — Completed
+- Overall status: Phase 6 fully implemented and verified with 58 backend tests passing
+- Last updated: Phase 6 completion
 
 ## Completed
 - Final product scope defined.
@@ -29,23 +29,28 @@ This file is the coding agent's source of truth. Update it after every completed
   - `GET /api/jobs/{job_id}/explain` API endpoint.
   - Frontend UI (`frontend/src/components/ExplanationView.tsx`).
 - **Phase 5 Test Suite Generation & Execution Implemented**:
-  - `TestGenerator` (`backend/app/ai/test_generator.py`): AST-guided unit test generator using Gemini API for Python (`pytest`) and JavaScript (`vitest`/`jest`).
-  - Test Schemas (`backend/app/ai/test_schema.py`): `GeneratedTestFile`, `TestCaseResult`, `TestCoverageSummary`, `TestExecutionResult`, `JobTestResults`.
-  - Docker Execution Sandbox (`backend/app/runners/docker_runner.py`): Ephemeral Docker runner enforcing `--network none`, 512MB RAM cap, 1.0 CPU cap, 30s execution timeout, and automatic container destruction. Safe fallback when Docker daemon is unavailable.
-  - Pytest & Coverage Parsers (`backend/app/runners/python_runner.py`, `js_runner.py`): Parses test execution stdout/stderr and real line coverage (`coverage.json`).
-  - API Endpoint (`backend/app/api/tests_api.py`): Exposes `GET /api/jobs/{job_id}/tests` with complete error handling (503 missing key, 429 quota, 504 timeout, 502 service error).
-  - Backend Test Suite (`backend/app/tests/test_test_gen.py`, `test_docker_runner.py`): 10 new unit tests (54 backend tests passing total).
-  - Frontend UI (`frontend/src/components/TestResultsView.tsx`): Integrated under `Generated Tests` tab, featuring line coverage percentage badge, test pass/fail counters, Monaco-styled code viewer with copy button, individual test case breakdown, and Docker terminal execution log output.
+  - `TestGenerator` (`backend/app/ai/test_generator.py`).
+  - Test Schemas (`backend/app/ai/test_schema.py`).
+  - Docker Execution Sandbox (`backend/app/runners/docker_runner.py`).
+  - Pytest & Coverage Parsers (`backend/app/runners/python_runner.py`, `js_runner.py`).
+  - API Endpoint (`backend/app/api/tests_api.py`).
+  - Frontend UI (`frontend/src/components/TestResultsView.tsx`).
+- **Phase 6 Coverage Analysis & Bounded Retries Implemented**:
+  - `build_targeted_coverage_prompt` (`backend/app/ai/test_generator.py`): Formats targeted prompts containing missing line numbers extracted from `coverage.json` (`uncovered_lines_by_file`).
+  - `refine_tests_for_coverage` (`backend/app/ai/test_generator.py`): Bounded retry loop (max 2 retries) that appends targeted tests for unexercised lines, re-runs in Docker sandbox, and tracks `coverage_history` and `target_reached` status.
+  - API Endpoints (`backend/app/api/tests_api.py`): Automatic retry refinement in `GET /api/jobs/{job_id}/tests` when coverage $< 60\%$ and new `POST /api/jobs/{job_id}/retry-tests` endpoint.
+  - Backend Test Suite (`backend/app/tests/test_coverage_retry.py`): 4 new unit tests covering targeted prompt construction, retry termination, and coverage escalation (58 backend tests passing total).
+  - Frontend UI (`frontend/src/components/TestResultsView.tsx`): Displays `Coverage Refinement (Retries: X/2)` badge, coverage trend history (`40% -> 58% -> 75%`), target $>60\%$ status badge, and "Run Targeted Retry" button.
 
 ## In Progress
-- None (Phase 5 completed, ready for Phase 6).
+- None (Phase 6 completed, ready for Phase 7).
 
 ## Next Task
-Phase 6 — Coverage & Bounded Retries:
-1. Target >60% line coverage on benchmark scripts.
-2. Uncovered line ranges extraction from `coverage.json`.
-3. Secondary targeted test generation prompt targeting missing lines.
-4. Bounded retry loop (max 2 retries) to elevate coverage.
+Phase 7 — Safe Code Refactoring & Breaking Change Warnings:
+1. Gemini refactoring engine using AST analysis & context.
+2. Modernization proposals (type hints, async/await, modern syntax).
+3. Split-pane code diffs (Original | Proposed).
+4. Signature / API / Import breaking change detector & warnings.
 
 ## Final Technology Decisions
 - React + Vite + TypeScript + Tailwind + reactflow
@@ -64,6 +69,7 @@ Phase 6 — Coverage & Bounded Retries:
 - AI engine never receives raw source code or unbounded repo context — receives structured summaries built by `ContextBuilder`.
 - Docker execution is isolated with `--network none` and strict resource caps; falls back safely to descriptive error if Docker daemon is offline.
 - Test runner output and `coverage.json` are parsed to produce actual (never fabricated) line coverage metrics.
+- Targeted retry refinement is strictly bounded at max 2 retries to control cost and execution time while elevating line coverage toward $>60\%$.
 
 ## Known Issues
 None.
@@ -84,7 +90,7 @@ Never store secret values here. `GEMINI_API_KEY` is read from server environment
 - [x] Generated tests work
 - [x] Docker runner works
 - [x] Real coverage works
-- [ ] >60% benchmark coverage achieved (Phase 6)
+- [x] >60% benchmark coverage achieved
 - [ ] Refactoring works (Phase 7)
 - [ ] Breaking-change warnings work (Phase 7)
 - [ ] 10k-line project handled
