@@ -158,9 +158,11 @@ export const TestResultsView: React.FC<TestResultsViewProps> = ({ jobId }) => {
           <div>
             <div className="text-xs text-slate-400 font-medium">Execution Status</div>
             <div className="text-sm font-semibold text-slate-200 capitalize mt-0.5">
-              {execution?.status || 'Unknown'}
+              {execution?.error?.includes('unavailable') ? 'Docker Unavailable' : (execution?.status || 'Unknown')}
             </div>
-            <span className="text-[10px] text-slate-400">{execution?.duration_seconds?.toFixed(1) ?? '0'}s runtime</span>
+            <span className="text-[10px] text-slate-400">
+              {execution?.error?.includes('unavailable') ? 'Sandbox Offline' : `${execution?.duration_seconds?.toFixed(1) ?? '0'}s runtime`}
+            </span>
           </div>
         </div>
 

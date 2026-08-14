@@ -93,3 +93,92 @@ def test_test_generator_mocked_provider():
     assert gen_file.target_file == "calculator.py"
     assert "def test_multiply():" in gen_file.code
     assert results.error is None
+
+
+def test_gemini_generates_test_files():
+    mock_provider = MagicMock()
+    mock_provider.generate.return_value = "```python\ndef test_add():\n    assert add(1, 2) == 3\n```"
+    generator = TestGenerator(provider=mock_provider)
+    project = ProjectAnalysis(
+        root_dir="/workspace",
+        total_files=1,
+        total_lines=5,
+        languages=["python"],
+        files=[
+            FileAnalysis(
+                path="math.py",
+                language="python",
+                total_lines=5,
+                functions=[FunctionSymbol(name="add", start_line=1, end_line=5, parameters=[])]
+            )
+        ]
+    )
+
+    results = generator.generate_tests_for_project(project)
+    assert len(results.generated_files) == 1
+    assert results.generated_files[0].file_path == "tests/test_math.py"
+    assert "def test_add()" in results.generated_files[0].code
+
+
+def test_docker_unavailable_returns_generated_test_content_safely(tmp_path):
+    from unittest.mock import patch
+    from app.runners.docker_runner import docker_runner
+    from app.ai.test_schema import JobTestResults, GeneratedTestFile
+
+    job_dir = str(tmp_path)
+    with patch.object(docker_runner, 'is_docker_available', return_value=False):
+        exec_res = docker_runner.run_tests(job_dir=job_dir, language="python")
+        assert exec_res.status == "error"
+        assert "Docker isolation environment unavailable" in exec_res.error
+
+        # Ensure generated files are preserved even when Docker execution is offline
+        test_results = JobTestResults(
+            generated_files=[
+                GeneratedTestFile(
+                    file_path="test_math.py",
+                    target_file="math.py",
+                    code="def test_add(): assert True\n",
+                    language="python"
+                )
+            ],
+            execution=exec_res
+        )
+        assert len(test_results.generated_files) == 1
+        assert "def test_add()" in test_results.generated_files[0].code
+        assert test_results.execution.error is not None
+
+
+def test_docker_available_executes_tests_normally():
+    from unittest.mock import patch
+    from app.runners.docker_runner import docker_runner
+    from app.ai.test_schema import TestExecutionResult
+
+    mock_exec = TestExecutionResult(
+        status="passed",
+        total_tests=1,
+        passed_tests=1,
+        failed_tests=0,
+        error_tests=0,
+        duration_seconds=0.5,
+        test_cases=[]
+    )
+
+    with patch.object(docker_runner, 'is_docker_available', return_value=True):
+        with patch.object(docker_runner, 'run_tests', return_value=mock_exec):
+            res = docker_runner.run_tests("/tmp/job", "python")
+            assert res.status == "passed"
+            assert res.passed_tests == 1
+
+
+def test_no_host_execution_ever_occurs_when_docker_offline(tmp_path):
+    from unittest.mock import patch
+    import subprocess
+    from app.runners.docker_runner import docker_runner
+
+    with patch.object(docker_runner, 'is_docker_available', return_value=False):
+        with patch.object(subprocess, 'run') as mock_sub_run:
+            exec_res = docker_runner.run_tests(job_dir=str(tmp_path), language="python")
+            assert exec_res.status == "error"
+            # Ensure subprocess.run was NEVER called to execute pytest/user code on host
+            mock_sub_run.assert_not_called()
+

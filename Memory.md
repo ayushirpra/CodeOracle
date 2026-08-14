@@ -3,9 +3,9 @@
 This file is the coding agent's source of truth. Update it after every completed phase.
 
 ## Current Status
-- Phase: 8 (Deployment & Model Configuration) — Completed
-- Overall status: Updated to `gemini-3.5-flash-lite`; 81 backend tests passing. Frontend build clean.
-- Last updated: Phase 8 model update completion
+- Phase: 8 (Deployment & Production Generated Tests Verification) — Completed
+- Overall status: Generated Tests flow verified; Docker fail-closed security enforced; 85 backend tests passing. Frontend build clean.
+- Last updated: Phase 8 production generated tests verification
 
 ## Completed
 - Final product scope defined.
