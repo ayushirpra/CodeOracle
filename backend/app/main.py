@@ -10,6 +10,7 @@ from app.api.health import router as health_router
 from app.api.projects import router as projects_router
 from app.api.jobs import router as jobs_router
 from app.api.explain import router as explain_router
+from app.api.tests_api import router as tests_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -31,6 +32,7 @@ app.include_router(health_router, prefix=settings.API_V1_STR)
 app.include_router(projects_router, prefix=settings.API_V1_STR)
 app.include_router(jobs_router, prefix=settings.API_V1_STR)
 app.include_router(explain_router, prefix=settings.API_V1_STR)
+app.include_router(tests_router, prefix=settings.API_V1_STR)
 
 # Root fallbacks
 app.include_router(health_router, prefix="")

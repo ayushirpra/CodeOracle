@@ -7,6 +7,7 @@ import {
 } from './services/api';
 import DependencyGraph from './components/DependencyGraph';
 import ExplanationView from './components/ExplanationView';
+import { TestResultsView } from './components/TestResultsView';
 import {
   Activity, CheckCircle2, RefreshCw,
   Cpu, Layers, GitBranch, Upload, Link, Network,
@@ -249,9 +250,8 @@ function ResultsView({
           />
         )}
         {activeTab === 'tests' && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
-            <Layers className="h-8 w-8 opacity-40" />
-            <p className="text-sm">Test Generation — coming in Phase 5</p>
+          <div className="h-full overflow-y-auto p-6 bg-[#0B0F19]">
+            <TestResultsView jobId={job.job_id} />
           </div>
         )}
         {activeTab === 'refactor' && (

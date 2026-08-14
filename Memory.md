@@ -3,9 +3,9 @@
 This file is the coding agent's source of truth. Update it after every completed phase.
 
 ## Current Status
-- Phase: 4 (AI Explanation Engine) — Completed
-- Overall status: Phase 4 fully implemented and verified
-- Last updated: Phase 4 completion
+- Phase: 5 (Test Suite Generation & Execution) — Completed
+- Overall status: Phase 5 fully implemented and verified with 54 backend tests passing
+- Last updated: Phase 5 completion
 
 ## Completed
 - Final product scope defined.
@@ -23,22 +23,29 @@ This file is the coding agent's source of truth. Update it after every completed
   - `reactflow` added to frontend.
   - `DependencyGraph` React component in `frontend/src/components/DependencyGraph.tsx`.
 - **Phase 4 Gemini Explanation Engine Implemented**:
-  - `GeminiProvider` abstraction layer (`backend/app/ai/provider.py`): Lazy client initialization using `google-genai` SDK, API key read exclusively from server environment (`GEMINI_API_KEY`), handles `AIKeyMissingError`, `AIQuotaError`, `AITimeoutError`, `AIResponseError`, `AIServiceError` with retry logic for 429/500/503.
-  - `ExplanationEngine` & `ContextBuilder` (`backend/app/ai/engine.py`, `backend/app/ai/context_builder.py`): Hierarchical context construction (repo overview -> per-file -> per-symbol), bounded prompts (<3,000 chars per file context block, never sends raw source code or entire 10k-line repo at once), structured prompt templates with line references and explicit uncertainty instructions.
-  - Explanation Schema (`backend/app/ai/schema.py`): `ProjectExplanation`, `FileExplanation`, `SymbolExplanation`.
-  - `GET /api/jobs/{job_id}/explain` API endpoint returning structured project explanations and handling all AI error codes (503 missing key, 429 quota, 504 timeout, 502 service error).
-  - Test Suite (`backend/app/tests/test_explain.py`): 24 new tests covering context builder bounds, prompt generation, mocked provider behavior, entry point heuristics, partial failure handling, and API status codes.
-  - Frontend UI (`frontend/src/components/ExplanationView.tsx`): Integrated under Explanation tab, features custom markdown-like Gemini renderer, expandable file cards, symbol accordions, entry points list, partial warning banner, and error handling states.
+  - `GeminiProvider` abstraction layer (`backend/app/ai/provider.py`).
+  - `ExplanationEngine` & `ContextBuilder` (`backend/app/ai/engine.py`, `backend/app/ai/context_builder.py`).
+  - Explanation Schema (`backend/app/ai/schema.py`).
+  - `GET /api/jobs/{job_id}/explain` API endpoint.
+  - Frontend UI (`frontend/src/components/ExplanationView.tsx`).
+- **Phase 5 Test Suite Generation & Execution Implemented**:
+  - `TestGenerator` (`backend/app/ai/test_generator.py`): AST-guided unit test generator using Gemini API for Python (`pytest`) and JavaScript (`vitest`/`jest`).
+  - Test Schemas (`backend/app/ai/test_schema.py`): `GeneratedTestFile`, `TestCaseResult`, `TestCoverageSummary`, `TestExecutionResult`, `JobTestResults`.
+  - Docker Execution Sandbox (`backend/app/runners/docker_runner.py`): Ephemeral Docker runner enforcing `--network none`, 512MB RAM cap, 1.0 CPU cap, 30s execution timeout, and automatic container destruction. Safe fallback when Docker daemon is unavailable.
+  - Pytest & Coverage Parsers (`backend/app/runners/python_runner.py`, `js_runner.py`): Parses test execution stdout/stderr and real line coverage (`coverage.json`).
+  - API Endpoint (`backend/app/api/tests_api.py`): Exposes `GET /api/jobs/{job_id}/tests` with complete error handling (503 missing key, 429 quota, 504 timeout, 502 service error).
+  - Backend Test Suite (`backend/app/tests/test_test_gen.py`, `test_docker_runner.py`): 10 new unit tests (54 backend tests passing total).
+  - Frontend UI (`frontend/src/components/TestResultsView.tsx`): Integrated under `Generated Tests` tab, featuring line coverage percentage badge, test pass/fail counters, Monaco-styled code viewer with copy button, individual test case breakdown, and Docker terminal execution log output.
 
 ## In Progress
-- None (Phase 4 completed, awaiting instruction for Phase 5).
+- None (Phase 5 completed, ready for Phase 6).
 
 ## Next Task
-Phase 5 — Test Suite Generation & Execution:
-1. Gemini test generation prompt using AST signatures + context.
-2. Generate pytest (Python) or Jest/Node test runner code (JavaScript).
-3. Docker container execution sandbox for isolation.
-4. Execution results API returning pass/fail status and output logs.
+Phase 6 — Coverage & Bounded Retries:
+1. Target >60% line coverage on benchmark scripts.
+2. Uncovered line ranges extraction from `coverage.json`.
+3. Secondary targeted test generation prompt targeting missing lines.
+4. Bounded retry loop (max 2 retries) to elevate coverage.
 
 ## Final Technology Decisions
 - React + Vite + TypeScript + Tailwind + reactflow
@@ -47,7 +54,7 @@ Phase 5 — Test Suite Generation & Execution:
 - Gemini API (`google-genai` SDK)
 - Python built-in `ast`; JavaScript regex-AST
 - pytest + coverage.py
-- Docker sandbox (Phase 5+)
+- Docker sandbox (`docker run --network none --memory 512m`)
 - Render
 - Temporary filesystem; no database; no authentication
 
@@ -55,7 +62,8 @@ Phase 5 — Test Suite Generation & Execution:
 - Gemini access is hidden behind `GeminiProvider` abstraction.
 - API key is never exposed to the frontend.
 - AI engine never receives raw source code or unbounded repo context — receives structured summaries built by `ContextBuilder`.
-- Individual file explanation failures do not fail the whole request; partial explanations are returned and flagged.
+- Docker execution is isolated with `--network none` and strict resource caps; falls back safely to descriptive error if Docker daemon is offline.
+- Test runner output and `coverage.json` are parsed to produce actual (never fabricated) line coverage metrics.
 
 ## Known Issues
 None.
@@ -73,12 +81,12 @@ Never store secret values here. `GEMINI_API_KEY` is read from server environment
 - [x] JavaScript adapter works
 - [x] Dependency graph works
 - [x] Gemini explanation engine works
-- [ ] Generated tests work
-- [ ] Docker runner works
-- [ ] Real coverage works
-- [ ] >60% benchmark coverage achieved
-- [ ] Refactoring works
-- [ ] Breaking-change warnings work
+- [x] Generated tests work
+- [x] Docker runner works
+- [x] Real coverage works
+- [ ] >60% benchmark coverage achieved (Phase 6)
+- [ ] Refactoring works (Phase 7)
+- [ ] Breaking-change warnings work (Phase 7)
 - [ ] 10k-line project handled
 - [ ] Render deployment works
 

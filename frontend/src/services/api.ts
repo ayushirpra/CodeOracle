@@ -164,6 +164,53 @@ export async function fetchJobExplanation(jobId: string): Promise<ProjectExplana
   return apiFetch<ProjectExplanation>(`/api/jobs/${jobId}/explain`);
 }
 
+// ─── Test Suite Types ─────────────────────────────────────────────────────────
+
+export interface GeneratedTestFile {
+  file_path: string;
+  target_file: string;
+  code: string;
+  language: string;
+}
+
+export interface TestCaseResult {
+  name: string;
+  status: 'passed' | 'failed' | 'error' | 'skipped';
+  duration_seconds: number;
+  message?: string;
+}
+
+export interface TestCoverageSummary {
+  covered_lines: number;
+  total_lines: number;
+  coverage_percent: number;
+  uncovered_lines_by_file: Record<string, number[]>;
+}
+
+export interface TestExecutionResult {
+  status: 'passed' | 'failed' | 'error';
+  total_tests: number;
+  passed_tests: number;
+  failed_tests: number;
+  error_tests: number;
+  duration_seconds: number;
+  test_cases: TestCaseResult[];
+  coverage?: TestCoverageSummary;
+  stdout: string;
+  stderr: string;
+  error?: string;
+}
+
+export interface JobTestResults {
+  generated_files: GeneratedTestFile[];
+  execution?: TestExecutionResult;
+  error?: string;
+}
+
+export async function fetchJobTests(jobId: string): Promise<JobTestResults> {
+  return apiFetch<JobTestResults>(`/api/jobs/${jobId}/tests`);
+}
+
 export async function deleteJob(jobId: string): Promise<void> {
   await apiFetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
 }

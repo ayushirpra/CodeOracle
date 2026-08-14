@@ -32,6 +32,7 @@ class JobManager:
             "stats": None,
             "error": None,
             "stage_error": None,
+            "tests_result": None,
             "job_dir": job_dir
         }
 
@@ -50,7 +51,8 @@ class JobManager:
         stage: str,
         stats: Optional[Dict[str, Any]] = None,
         error: Optional[str] = None,
-        stage_error: Optional[str] = None
+        stage_error: Optional[str] = None,
+        tests_result: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
         if job_id not in self._jobs:
             return None
@@ -66,6 +68,8 @@ class JobManager:
             job["error"] = error
         if stage_error is not None:
             job["stage_error"] = stage_error
+        if tests_result is not None:
+            job["tests_result"] = tests_result
 
         return job
 
