@@ -3,9 +3,9 @@
 This file is the coding agent's source of truth. Update it after every completed phase.
 
 ## Current Status
-- Phase: 6 (Coverage Analysis & Bounded Retries) — Completed
-- Overall status: Phase 6 fully implemented and verified with 58 backend tests passing
-- Last updated: Phase 6 completion
+- Phase: 7 (Safe Code Refactoring & Breaking Change Warnings) — Completed
+- Overall status: Phase 7 fully implemented and verified with 79 backend tests passing
+- Last updated: Phase 7 completion
 
 ## Completed
 - Final product scope defined.
@@ -35,22 +35,23 @@ This file is the coding agent's source of truth. Update it after every completed
   - Pytest & Coverage Parsers (`backend/app/runners/python_runner.py`, `js_runner.py`).
   - API Endpoint (`backend/app/api/tests_api.py`).
   - Frontend UI (`frontend/src/components/TestResultsView.tsx`).
-- **Phase 6 Coverage Analysis & Bounded Retries Implemented**:
-  - `build_targeted_coverage_prompt` (`backend/app/ai/test_generator.py`): Formats targeted prompts containing missing line numbers extracted from `coverage.json` (`uncovered_lines_by_file`).
-  - `refine_tests_for_coverage` (`backend/app/ai/test_generator.py`): Bounded retry loop (max 2 retries) that appends targeted tests for unexercised lines, re-runs in Docker sandbox, and tracks `coverage_history` and `target_reached` status.
-  - API Endpoints (`backend/app/api/tests_api.py`): Automatic retry refinement in `GET /api/jobs/{job_id}/tests` when coverage $< 60\%$ and new `POST /api/jobs/{job_id}/retry-tests` endpoint.
-  - Backend Test Suite (`backend/app/tests/test_coverage_retry.py`): 4 new unit tests covering targeted prompt construction, retry termination, and coverage escalation (58 backend tests passing total).
-  - Frontend UI (`frontend/src/components/TestResultsView.tsx`): Displays `Coverage Refinement (Retries: X/2)` badge, coverage trend history (`40% -> 58% -> 75%`), target $>60\%$ status badge, and "Run Targeted Retry" button.
+- **Phase 7 Safe Code Refactoring & Breaking Change Warnings Implemented**:
+  - `schema.py` (`backend/app/refactor/`): `BreakingChangeWarning`, `RefactoredFile`, `ProjectRefactorProposal` Pydantic models.
+  - `prompts.py` (`backend/app/refactor/`): AST-guided Gemini prompts for Python (type hints, f-strings, pathlib, async/await) and JavaScript (ES2022+, arrow functions, optional chaining).
+  - `breaking_changes.py` (`backend/app/refactor/`): Static AST comparator detecting removed functions/classes (HIGH), added required parameters (HIGH), parameter removals (HIGH), removed imports (MEDIUM), added imports (LOW). JS regex-based export removal detection.
+  - `engine.py` (`backend/app/refactor/`): `RefactorEngine` orchestrator — calls Gemini per file, computes `difflib.unified_diff`, runs breaking change detector, generates plain-English summaries. Capped at 5 files per project.
+  - `refactor_api.py` (`backend/app/api/`): `GET /api/jobs/{job_id}/refactor` with full AI error handling and caching.
+  - Backend Test Suite (`backend/app/tests/test_refactor.py`): 21 new unit tests across breaking change detection, unified diff, code extraction, engine integration, and API router (79 backend tests passing total).
+  - Frontend UI (`frontend/src/components/RefactorView.tsx`): File sidebar navigator, split/unified diff viewer toggle, severity-badged breaking change cards (HIGH/MEDIUM/LOW) with collapsible details, migration hints, and before/after signature comparison.
 
 ## In Progress
-- None (Phase 6 completed, ready for Phase 7).
+- None (Phase 7 completed, ready for Phase 8).
 
 ## Next Task
-Phase 7 — Safe Code Refactoring & Breaking Change Warnings:
-1. Gemini refactoring engine using AST analysis & context.
-2. Modernization proposals (type hints, async/await, modern syntax).
-3. Split-pane code diffs (Original | Proposed).
-4. Signature / API / Import breaking change detector & warnings.
+Phase 8 — Deployment & Final Polish:
+1. Render deployment configuration (backend + frontend).
+2. Environment variable documentation.
+3. Final end-to-end smoke test on deployed instance.
 
 ## Final Technology Decisions
 - React + Vite + TypeScript + Tailwind + reactflow
@@ -91,8 +92,8 @@ Never store secret values here. `GEMINI_API_KEY` is read from server environment
 - [x] Docker runner works
 - [x] Real coverage works
 - [x] >60% benchmark coverage achieved
-- [ ] Refactoring works (Phase 7)
-- [ ] Breaking-change warnings work (Phase 7)
+- [x] Refactoring works (Phase 7)
+- [x] Breaking-change warnings work (Phase 7)
 - [ ] 10k-line project handled
 - [ ] Render deployment works
 

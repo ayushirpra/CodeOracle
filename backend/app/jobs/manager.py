@@ -33,6 +33,7 @@ class JobManager:
             "error": None,
             "stage_error": None,
             "tests_result": None,
+            "refactor_result": None,
             "job_dir": job_dir
         }
 
@@ -52,7 +53,8 @@ class JobManager:
         stats: Optional[Dict[str, Any]] = None,
         error: Optional[str] = None,
         stage_error: Optional[str] = None,
-        tests_result: Optional[Dict[str, Any]] = None
+        tests_result: Optional[Dict[str, Any]] = None,
+        refactor_result: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
         if job_id not in self._jobs:
             return None
@@ -70,6 +72,8 @@ class JobManager:
             job["stage_error"] = stage_error
         if tests_result is not None:
             job["tests_result"] = tests_result
+        if refactor_result is not None:
+            job["refactor_result"] = refactor_result
 
         return job
 

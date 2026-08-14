@@ -8,9 +8,10 @@ import {
 import DependencyGraph from './components/DependencyGraph';
 import ExplanationView from './components/ExplanationView';
 import { TestResultsView } from './components/TestResultsView';
+import { RefactorView } from './components/RefactorView';
 import {
   Activity, CheckCircle2, RefreshCw,
-  Cpu, Layers, GitBranch, Upload, Link, Network,
+  Cpu, GitBranch, Upload, Link, Network,
   X, AlertTriangle, ChevronRight, Sparkles,
 } from 'lucide-react';
 
@@ -255,9 +256,8 @@ function ResultsView({
           </div>
         )}
         {activeTab === 'refactor' && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
-            <Layers className="h-8 w-8 opacity-40" />
-            <p className="text-sm">Refactoring — coming in Phase 7</p>
+          <div className="h-full overflow-hidden bg-[#0B0F19]">
+            <RefactorView jobId={job.job_id} />
           </div>
         )}
       </div>

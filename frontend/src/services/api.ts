@@ -221,3 +221,43 @@ export async function retryJobTests(jobId: string): Promise<JobTestResults> {
 export async function deleteJob(jobId: string): Promise<void> {
   await apiFetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
 }
+
+// ─── Refactor Types ───────────────────────────────────────────────────────────
+
+export interface BreakingChangeWarning {
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  change_type: string;
+  symbol: string;
+  description: string;
+  original_signature?: string;
+  proposed_signature?: string;
+  migration_hint: string;
+}
+
+export interface RefactoredFile {
+  file_path: string;
+  language: string;
+  original_code: string;
+  proposed_code: string;
+  unified_diff: string;
+  breaking_changes: BreakingChangeWarning[];
+  high_count: number;
+  medium_count: number;
+  low_count: number;
+  refactor_summary: string;
+}
+
+export interface ProjectRefactorProposal {
+  total_files_refactored: number;
+  total_warnings: number;
+  high_warnings: number;
+  medium_warnings: number;
+  low_warnings: number;
+  files: RefactoredFile[];
+  error?: string;
+}
+
+export async function fetchJobRefactor(jobId: string): Promise<ProjectRefactorProposal> {
+  return apiFetch<ProjectRefactorProposal>(`/api/jobs/${jobId}/refactor`);
+}
+
