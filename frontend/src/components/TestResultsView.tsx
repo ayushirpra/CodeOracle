@@ -172,7 +172,7 @@ export const TestResultsView: React.FC<TestResultsViewProps> = ({ jobId }) => {
           <div>
             <div className="text-xs text-slate-400 font-medium">Sandbox Environment</div>
             <div className="text-sm font-semibold text-indigo-300 mt-0.5">
-              {execution?.error?.includes('unavailable') ? 'Host Fallback' : 'Docker Isolated'}
+              {execution?.error?.includes('unavailable') ? 'Docker Unavailable' : 'Docker Isolated'}
             </div>
             <span className="text-[10px] text-slate-400">Network Disabled (--network none)</span>
           </div>
