@@ -129,16 +129,14 @@ def _refactor_single_file(
     medium_count = sum(1 for w in breaking if w.severity == "MEDIUM")
     low_count = sum(1 for w in breaking if w.severity == "LOW")
 
-    # Generate plain-English summary (best-effort, no hard failure)
+    # Generate plain-English summary locally from diff to avoid redundant AI API round-trips
     summary = ""
     if unified_diff:
-        try:
-            summary_prompt = build_refactor_summary_prompt(fa.path, unified_diff)
-            summary = provider.generate(summary_prompt, temperature=0.1)
-            # Strip markdown artifacts
-            summary = re.sub(r"[*_`#]", "", summary).strip()
-        except AIProviderError:
-            summary = f"Modernised {fa.path} with updated syntax and type annotations."
+        lines_added = sum(1 for line in unified_diff.splitlines() if line.startswith("+") and not line.startswith("+++"))
+        lines_removed = sum(1 for line in unified_diff.splitlines() if line.startswith("-") and not line.startswith("---"))
+        summary = f"Modernised `{fa.path}` ({lines_added} additions, {lines_removed} deletions) with type annotations and modern idioms."
+    else:
+        summary = f"Preserved `{fa.path}` structure — no structural changes required."
 
     return RefactoredFile(
         file_path=fa.path,

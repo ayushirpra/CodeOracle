@@ -97,7 +97,7 @@ async def get_or_generate_job_tests(job_id: str):
             test_results.error = f"Failed to write test file {gen_file.file_path}: {str(exc)}"
 
     # Step 3: Execute tests in Docker container
-    primary_lang = project_analysis.primary_language or "python"
+    primary_lang = project_analysis.languages[0] if project_analysis.languages else "python"
     exec_result = docker_runner.run_tests(job_dir=job_dir, language=primary_lang)
     test_results.execution = exec_result
 
@@ -151,7 +151,7 @@ async def retry_job_tests(job_id: str):
     project_analysis = ProjectAnalysis.model_validate(stats)
     test_results = JobTestResults.model_validate(cached_tests)
     job_dir = job.get("job_dir") or job_manager.get_job_dir(job_id)
-    primary_lang = project_analysis.primary_language or "python"
+    primary_lang = project_analysis.languages[0] if project_analysis.languages else "python"
 
     refined_results = test_generator.refine_tests_for_coverage(
         project=project_analysis,
