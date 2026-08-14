@@ -56,6 +56,16 @@ async def explain_job(job_id: str):
 
         # Generate hierarchical explanation
         explanation = explanation_engine.explain_project(project_analysis, graph)
+        if explanation.error and not explanation.overview:
+            err_msg = explanation.error
+            if "GEMINI_API_KEY" in err_msg:
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail={"error": "configuration", "message": err_msg})
+            elif "quota" in err_msg.lower() or "429" in err_msg:
+                raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail={"error": "quota", "message": err_msg})
+            elif "timeout" in err_msg.lower():
+                raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail={"error": "timeout", "message": err_msg})
+            else:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail={"error": "ai_service", "message": err_msg})
         return explanation.model_dump()
 
     except AIKeyMissingError as exc:

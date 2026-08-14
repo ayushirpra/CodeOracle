@@ -1,0 +1,15 @@
+{
+  "job_id": "2cbedc24-4dc2-413d-b7e8-c364bdf8b51d",
+  "status": "processing",
+  "stage": "ingestion",
+  "source_type": "zip",
+  "source_info": "test.zip",
+  "created_at": "2026-08-14T16:42:40.175523+00:00",
+  "updated_at": "2026-08-14T16:42:40.175543+00:00",
+  "stats": null,
+  "error": null,
+  "stage_error": null,
+  "tests_result": null,
+  "refactor_result": null,
+  "job_dir": "C:\\Users\\dell\\OneDrive\\Desktop\\CodeOracle\\tmp\\jobs\\2cbedc24-4dc2-413d-b7e8-c364bdf8b51d"
+}

@@ -113,13 +113,26 @@ export interface ProjectExplanation {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { Accept: 'application/json' },
-    ...options,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: { Accept: 'application/json' },
+      ...options,
+    });
+  } catch (err: any) {
+    if (err instanceof TypeError || err?.name === 'TypeError' || String(err?.message).includes('fetch')) {
+      throw new Error(
+        'Unable to reach backend service. Please check network connection, server status, and GEMINI_API_KEY configuration.'
+      );
+    }
+    throw err;
+  }
   if (!response.ok) {
     const detail = await response.json().catch(() => ({ detail: response.statusText }));
-    const msg = detail?.detail?.message || detail?.detail || `Request failed: ${response.status}`;
+    const msg =
+      typeof detail?.detail === 'string'
+        ? detail.detail
+        : detail?.detail?.message || detail?.message || `Request failed with status ${response.status}`;
     throw new Error(msg);
   }
   return response.json();

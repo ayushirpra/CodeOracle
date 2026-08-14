@@ -141,3 +141,26 @@ def test_invalid_private_github_ingest():
     assert response.status_code == 400
     data = response.json()
     assert "message" in data["detail"]
+
+
+# 8. Job State Persistence and Reload Test
+def test_job_state_persistence_and_reload(tmp_path):
+    from app.jobs.manager import JobManager
+    jm = JobManager(base_dir=str(tmp_path))
+    job_id = jm.create_job("zip", "test.zip")
+    jm.update_job(job_id, status="completed", stage="analysis", stats={"total_files": 1})
+
+    # Clear in-memory dict to simulate RAM wipe
+    jm._jobs.pop(job_id, None)
+    assert job_id not in jm._jobs
+
+    # Reload from disk state
+    reloaded_job = jm.get_job(job_id)
+    assert reloaded_job is not None
+    assert reloaded_job["job_id"] == job_id
+    assert reloaded_job["status"] == "completed"
+    assert reloaded_job["stats"]["total_files"] == 1
+
+    # Cleanup
+    jm.delete_job(job_id)
+

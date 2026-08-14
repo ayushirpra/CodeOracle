@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 import uuid
 from datetime import datetime, timezone
@@ -41,7 +42,26 @@ class JobManager:
         }
 
         self._jobs[job_id] = job_data
+        self._save_job_state(job_data)
         return job_id
+
+    def _save_job_state(self, job_data: Dict[str, Any]) -> None:
+        """Saves job state to workspace disk as job_state.json."""
+        try:
+            job_dir = job_data.get("job_dir")
+            if job_dir and os.path.exists(job_dir):
+                state_file = os.path.join(job_dir, "job_state.json")
+                def _json_default(obj):
+                    if hasattr(obj, "model_dump"):
+                        return obj.model_dump()
+                    if hasattr(obj, "dict"):
+                        return obj.dict()
+                    return str(obj)
+
+                with open(state_file, "w", encoding="utf-8") as f:
+                    json.dump(job_data, f, indent=2, default=_json_default)
+        except Exception:
+            pass
 
     def cleanup_expired_jobs(self, max_age_seconds: int = 3600) -> int:
         """Deletes job workspaces older than max_age_seconds (default 1 hour)."""
@@ -77,10 +97,10 @@ class JobManager:
         tests_result: Optional[Dict[str, Any]] = None,
         refactor_result: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
-        if job_id not in self._jobs:
+        job = self.get_job(job_id)
+        if not job:
             return None
 
-        job = self._jobs[job_id]
         job["status"] = status
         job["stage"] = stage
         job["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -96,20 +116,33 @@ class JobManager:
         if refactor_result is not None:
             job["refactor_result"] = refactor_result
 
+        self._jobs[job_id] = job
+        self._save_job_state(job)
         return job
 
     def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        if job_id not in self._jobs:
+            job_dir = os.path.join(self.base_dir, job_id)
+            state_file = os.path.join(job_dir, "job_state.json")
+            if os.path.exists(state_file):
+                try:
+                    with open(state_file, "r", encoding="utf-8") as f:
+                        job_data = json.load(f)
+                        self._jobs[job_id] = job_data
+                except Exception:
+                    pass
         return self._jobs.get(job_id)
 
     def delete_job(self, job_id: str) -> bool:
-        if job_id in self._jobs:
-            job_dir = self._jobs[job_id].get("job_dir")
-            if job_dir and os.path.exists(job_dir):
+        job = self.get_job(job_id)
+        if job or job_id in self._jobs:
+            job_dir = (job or {}).get("job_dir") or os.path.join(self.base_dir, job_id)
+            if os.path.exists(job_dir):
                 try:
                     shutil.rmtree(job_dir, ignore_errors=True)
                 except Exception:
                     pass
-            del self._jobs[job_id]
+            self._jobs.pop(job_id, None)
             return True
         return False
 
