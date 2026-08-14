@@ -17,6 +17,9 @@ class JobManager:
         os.makedirs(self.base_dir, exist_ok=True)
 
     def create_job(self, source_type: str, source_info: str) -> str:
+        # Run periodic cleanup of expired job workspaces
+        self.cleanup_expired_jobs()
+
         job_id = str(uuid.uuid4())
         job_dir = os.path.join(self.base_dir, job_id)
         os.makedirs(job_dir, exist_ok=True)
@@ -39,6 +42,24 @@ class JobManager:
 
         self._jobs[job_id] = job_data
         return job_id
+
+    def cleanup_expired_jobs(self, max_age_seconds: int = 3600) -> int:
+        """Deletes job workspaces older than max_age_seconds (default 1 hour)."""
+        now = datetime.now(timezone.utc)
+        expired_ids = []
+        for jid, job in list(self._jobs.items()):
+            try:
+                updated_at = datetime.fromisoformat(job["updated_at"])
+                if (now - updated_at).total_seconds() > max_age_seconds:
+                    expired_ids.append(jid)
+            except Exception:
+                pass
+
+        cleaned_count = 0
+        for jid in expired_ids:
+            if self.delete_job(jid):
+                cleaned_count += 1
+        return cleaned_count
 
     def get_job_dir(self, job_id: str) -> str:
         job_dir = os.path.join(self.base_dir, job_id)

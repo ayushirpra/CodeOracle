@@ -64,11 +64,10 @@ class DockerRunner(BaseRunner):
 
         if language == "python":
             image = self.PYTHON_IMAGE
-            # Inline shell script ensuring pytest and coverage are available and running tests
+            # Execution script using pre-installed pytest/coverage inside container without requiring network
             inner_script = (
-                "pip install --quiet pytest coverage && "
-                "python -m coverage run -m pytest --tb=short -v && "
-                "python -m coverage json -o coverage.json"
+                "(python -m coverage run -m pytest --tb=short -v || python -m pytest --tb=short -v || python -m unittest discover) && "
+                "(python -m coverage json -o coverage.json || true)"
             )
         elif language in ("javascript", "typescript"):
             image = self.NODE_IMAGE

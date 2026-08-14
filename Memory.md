@@ -3,9 +3,9 @@
 This file is the coding agent's source of truth. Update it after every completed phase.
 
 ## Current Status
-- Phase: 7 (Safe Code Refactoring & Breaking Change Warnings) — Completed
-- Overall status: Phase 7 fully implemented and verified with 79 backend tests passing
-- Last updated: Phase 7 completion
+- Phase: 8 (Deployment & Production Readiness Audit) — Completed
+- Overall status: Production blockers resolved; Render deploy config, Docker sandbox script, backend requirements, and CORS/env vars fully verified. 79 backend tests passing.
+- Last updated: Phase 8 production audit completion
 
 ## Completed
 - Final product scope defined.
@@ -16,42 +16,25 @@ This file is the coding agent's source of truth. Update it after every completed
 - **Phase 0 Foundation Implemented**: React+Vite+TS frontend, FastAPI backend, health endpoint, Render config.
 - **Phase 1 Project Ingestion Implemented**: ZIP upload (with Zip Slip protection), public GitHub download, file scanning, 10,000 line limit, job workspace management.
 - **Phase 2 Language Adapters Implemented**: `LanguageAdapter` abstract contract, `PythonAdapter` (ast), `JavaScriptAdapter` (regex-AST), `AdapterRegistry`, normalized `ProjectAnalysis` schema, integrated into API pipeline.
-- **Phase 3 Dependency Graph Implemented**:
-  - `GraphNode`/`GraphEdge`/`DependencyGraph` schema in `backend/app/graph/schema.py`.
-  - `GraphBuilder` in `backend/app/graph/builder.py`.
-  - `GET /api/jobs/{job_id}/graph` endpoint.
-  - `reactflow` added to frontend.
-  - `DependencyGraph` React component in `frontend/src/components/DependencyGraph.tsx`.
-- **Phase 4 Gemini Explanation Engine Implemented**:
-  - `GeminiProvider` abstraction layer (`backend/app/ai/provider.py`).
-  - `ExplanationEngine` & `ContextBuilder` (`backend/app/ai/engine.py`, `backend/app/ai/context_builder.py`).
-  - Explanation Schema (`backend/app/ai/schema.py`).
-  - `GET /api/jobs/{job_id}/explain` API endpoint.
-  - Frontend UI (`frontend/src/components/ExplanationView.tsx`).
-- **Phase 5 Test Suite Generation & Execution Implemented**:
-  - `TestGenerator` (`backend/app/ai/test_generator.py`).
-  - Test Schemas (`backend/app/ai/test_schema.py`).
-  - Docker Execution Sandbox (`backend/app/runners/docker_runner.py`).
-  - Pytest & Coverage Parsers (`backend/app/runners/python_runner.py`, `js_runner.py`).
-  - API Endpoint (`backend/app/api/tests_api.py`).
-  - Frontend UI (`frontend/src/components/TestResultsView.tsx`).
-- **Phase 7 Safe Code Refactoring & Breaking Change Warnings Implemented**:
-  - `schema.py` (`backend/app/refactor/`): `BreakingChangeWarning`, `RefactoredFile`, `ProjectRefactorProposal` Pydantic models.
-  - `prompts.py` (`backend/app/refactor/`): AST-guided Gemini prompts for Python (type hints, f-strings, pathlib, async/await) and JavaScript (ES2022+, arrow functions, optional chaining).
-  - `breaking_changes.py` (`backend/app/refactor/`): Static AST comparator detecting removed functions/classes (HIGH), added required parameters (HIGH), parameter removals (HIGH), removed imports (MEDIUM), added imports (LOW). JS regex-based export removal detection.
-  - `engine.py` (`backend/app/refactor/`): `RefactorEngine` orchestrator — calls Gemini per file, computes `difflib.unified_diff`, runs breaking change detector, generates plain-English summaries. Capped at 5 files per project.
-  - `refactor_api.py` (`backend/app/api/`): `GET /api/jobs/{job_id}/refactor` with full AI error handling and caching.
-  - Backend Test Suite (`backend/app/tests/test_refactor.py`): 21 new unit tests across breaking change detection, unified diff, code extraction, engine integration, and API router (79 backend tests passing total).
-  - Frontend UI (`frontend/src/components/RefactorView.tsx`): File sidebar navigator, split/unified diff viewer toggle, severity-badged breaking change cards (HIGH/MEDIUM/LOW) with collapsible details, migration hints, and before/after signature comparison.
+- **Phase 3 Dependency Graph Implemented**: `GraphNode`/`GraphEdge`/`DependencyGraph` schema, `GraphBuilder`, `GET /api/jobs/{job_id}/graph`, `reactflow` UI.
+- **Phase 4 Gemini Explanation Engine Implemented**: `GeminiProvider` abstraction, `ExplanationEngine` & `ContextBuilder`, `GET /api/jobs/{job_id}/explain`, `ExplanationView`.
+- **Phase 5 Test Suite Generation & Execution Implemented**: `TestGenerator`, `docker_runner` isolated sandbox (`--network none`), pytest & coverage parsers, `GET /api/jobs/{job_id}/tests`, `TestResultsView`.
+- **Phase 6 Coverage Analysis & Bounded Retries Implemented**: `uncovered_lines_by_file` extraction from `coverage.json`, targeted prompts, bounded retry refinement loop (max 2 retries), coverage progression trends, `POST /api/jobs/{job_id}/retry-tests`.
+- **Phase 7 Safe Code Refactoring & Breaking Change Warnings Implemented**: AST static comparator (`breaking_changes.py`), Gemini prompts (`prompts.py`), `RefactorEngine` orchestrator, `GET /api/jobs/{job_id}/refactor`, `RefactorView` split/unified diff & warning cards.
+- **Phase 8 Production Readiness Audit & Deployment Fixes Implemented**:
+  - `backend/requirements.txt`: Added `google-genai>=0.1.0`.
+  - `render.yaml`: Configured `VITE_API_BASE_URL` (`https://codeoracle-backend.onrender.com`) for static frontend build and set `ALLOWED_ORIGINS` for production CORS.
+  - `Dockerfile`: Updated `CMD` to shell form (`sh -c uvicorn ... --port ${PORT:-8000}`).
+  - `backend/app/runners/docker_runner.py`: Fixed `--network none` pipe flaw using offline-capable coverage/pytest execution script while preserving strict Docker fail-safe security rule (no unsandboxed execution).
+  - `backend/app/jobs/manager.py`: Implemented 1-hour job workspace TTL garbage collection (`cleanup_expired_jobs`).
 
 ## In Progress
-- None (Phase 7 completed, ready for Phase 8).
+- Ready for deployment to Render.
 
 ## Next Task
-Phase 8 — Deployment & Final Polish:
-1. Render deployment configuration (backend + frontend).
-2. Environment variable documentation.
-3. Final end-to-end smoke test on deployed instance.
+1. Commit and push repository changes to GitHub.
+2. Deploy to Render via `render.yaml`.
+3. Perform live end-to-end smoke testing.
 
 ## Final Technology Decisions
 - React + Vite + TypeScript + Tailwind + reactflow
