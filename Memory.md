@@ -3,9 +3,9 @@
 This file is the coding agent's source of truth. Update it after every completed phase.
 
 ## Current Status
-- Phase: 8 (Deployment & Production Readiness Audit) — Completed
-- Overall status: Production audit & error propagation fixes completed; 80 backend tests passing. Frontend build clean.
-- Last updated: Phase 8 production audit completion
+- Phase: 8 (Deployment & Model Configuration) — Completed
+- Overall status: Updated to `gemini-3.5-flash-lite`; 81 backend tests passing. Frontend build clean.
+- Last updated: Phase 8 model update completion
 
 ## Completed
 - Final product scope defined.

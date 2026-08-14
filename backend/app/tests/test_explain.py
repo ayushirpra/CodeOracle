@@ -252,6 +252,25 @@ def test_engine_entry_points_detected():
 
 # ─── Provider Error Handling ─────────────────────────────────────────────────
 
+def test_gemini_provider_model_name_and_generation_mock():
+    provider = GeminiProvider()
+    assert provider.MODEL_NAME == "gemini-3.5-flash-lite"
+
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = "Generated content for gemini-3.5-flash-lite"
+    mock_client.models.generate_content.return_value = mock_response
+
+    provider._client = mock_client
+    result = provider.generate("Test prompt")
+    assert result == "Generated content for gemini-3.5-flash-lite"
+    
+    assert mock_client.models.generate_content.call_count == 1
+    call_kwargs = mock_client.models.generate_content.call_args.kwargs
+    assert call_kwargs["model"] == "gemini-3.5-flash-lite"
+    assert call_kwargs["contents"] == "Test prompt"
+
+
 def test_provider_raises_key_missing_on_no_key():
     provider = GeminiProvider()
     with patch("app.core.config.settings") as mock_settings:

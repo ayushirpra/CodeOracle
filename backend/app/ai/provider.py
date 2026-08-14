@@ -72,7 +72,7 @@ class GeminiProvider:
     Uses the google-genai SDK. API key comes from environment only.
     """
 
-    MODEL_NAME = "gemini-2.5-flash"
+    MODEL_NAME = "gemini-3.5-flash-lite"
     TIMEOUT_SECONDS = 30
     MAX_RETRIES = 2
 
